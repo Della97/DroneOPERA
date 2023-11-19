@@ -54,4 +54,4 @@ build/
 Thumbs.db
 
 # Ignore vscode files
-.vscode
+.vscode/
