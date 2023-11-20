@@ -4,7 +4,7 @@
 
 ### Prerequisites
 
-ns3 library and ns3-netvisualyzer-module.
+ns3 library (installed under /home/username/tarballs) and ns3-netvisualyzer-module (installed under src/contrib as tutorial on repo of the module).
 
 ### Installation
 
