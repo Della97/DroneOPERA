@@ -21,26 +21,28 @@ add_executable(out
 
 # Link the necessary NS-3 libraries
 target_link_libraries(out
-    ns3.40-core-default
-    ns3.40-network-default
-    ns3.40-internet-default
-    ns3.40-point-to-point-default
-    ns3.40-applications-default
-    ns3.40-wifi-default
-    ns3.40-mobility-default
-    ns3.40-csma-default
-    ns3.40-propagation-default
-    ns3.40-netanim-default
-    ns3.40-netsimulyzer-default
-    ns3.40-buildings-default
+    ns3.40-core-debug
+    ns3.40-network-debug
+    ns3.40-internet-debug
+    ns3.40-point-to-point-debug
+    ns3.40-applications-debug
+    ns3.40-wifi-debug
+    ns3.40-mobility-debug
+    ns3.40-csma-debug
+    ns3.40-propagation-debug
+    ns3.40-netanim-debug
+    ns3.40-netsimulyzer-debug
+    ns3.40-buildings-debug
+    ns3.40-stats-debug
+    ns3.40-mpi-debug
 )
 
-# Add the rpath for the NS-3 libraries
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath=${NS3_BUILD_DIR}")
+# Use mpic++ as the C++ compiler
+set(CMAKE_CXX_COMPILER mpic++)
 
-# Add a custom target to run the executable
-add_custom_target(run
-    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/out
+# Add a custom target to run the executable with MPI
+add_custom_target(run_mpi
+    COMMAND mpiexec -n 2 ${CMAKE_CURRENT_BINARY_DIR}/out
     DEPENDS out
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
 )
