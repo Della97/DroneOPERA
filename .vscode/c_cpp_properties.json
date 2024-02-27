@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "/home/della/tarballs/ns-allinone-3.40/ns-3.40/build/**"
+                "/home/della/tarballs/ns-allinone-3.40/ns-3.40/build/**",
+                "/usr/include/openmpi-x86_64"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
