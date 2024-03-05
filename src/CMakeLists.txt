@@ -35,6 +35,8 @@ target_link_libraries(out
     ns3.40-buildings-debug
     ns3.40-stats-debug
     ns3.40-mpi-debug
+    ns3.40-energy-debug
+    ns3.40-energy-test-debug
 )
 
 # Use mpic++ as the C++ compiler

@@ -40,6 +40,10 @@
 #include "ns3/mpi-module.h"
 #include "ns3/mpi-interface.h"
 #include "ns3/mpi-receiver.h"
+#include <ns3/energy-module.h>
+#include "ns3/wifi-radio-energy-model-helper.h"
+#include "ns3/wifi-radio-energy-model.h"
+#include <ns3/core-module.h>
 
 //MPI
 #ifdef NS3_MPI
@@ -55,6 +59,10 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("WifiSimpleInfra");
 
 Ptr<netsimulyzer::LogStream> eventLog;
+
+void RemainingEnergy (double oldValue, double remainingEnergy) {
+    NS_LOG_UNCOND (Simulator::Now ().GetSeconds ()<< "s Current remaining energy = " << remainingEnergy << "J");
+}
 
 
 /**
@@ -88,7 +96,7 @@ void ReceivePacket(Ptr<Socket> socket) {
  * \param pktInterval The interval between two packets.
  * \param node The done instance.
  */
-static void GenerateTraffic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, Time pktInterval, Ptr<Node> node) {
+static void GenerateTraffic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, Time pktInterval, Ptr<Node> node, Ptr<SimpleDeviceEnergyModel> deviceEnergyModel) {
     //MOBILITY FIRST
     Ptr<MobilityModel> mobility = node->GetObject<MobilityModel>();
     Vector pos = mobility->GetPosition();
@@ -97,7 +105,7 @@ static void GenerateTraffic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCo
     if (pktCount > 0) {
         // Set the payload string
         std::ostringstream msgx;
-        msgx << "[HOST " << node->GetId() << "] - [LP: " << MpiInterface::GetSystemId() << " ] -> Position X: " << pos.x << " Y: " << pos.y << '\0';
+        msgx << "[HOST " << node->GetId() << "] - [LP: " << MpiInterface::GetSystemId() << " ] -> Position X: " << pos.x << " Y: " << pos.y << " Total Battery Usage: " << deviceEnergyModel->GetTotalEnergyConsumption() << '\0';
         uint16_t packetSize = msgx.str().length() + 1;
         Ptr<Packet> packet = Create<Packet>((uint8_t *)msgx.str().c_str(), packetSize);
         socket->Send(packet);
@@ -108,12 +116,14 @@ static void GenerateTraffic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCo
                             pktSize,
                             pktCount - 1,
                             pktInterval,
-                            node);
+                            node,
+                            deviceEnergyModel);
     }
     else {
         socket->Close();
     }
 }  //GenerateTraffic()
+
 
 int main(int argc, char* argv[]) {
     //////////////////////////////////////
@@ -134,7 +144,7 @@ int main(int argc, char* argv[]) {
     std::string phyMode("DsssRate1Mbps");
     double rss = -80;           // -dBm
     uint32_t packetSize = 1000; // bytes
-    uint32_t numPackets = 30;
+    uint32_t numPackets = 100;
     Time interval = Seconds(10.0);
     bool verbose = false;
     bool spawnBuildings = false;
@@ -222,8 +232,6 @@ int main(int argc, char* argv[]) {
         nodeConfigHelper.Install(stasL.Get(i));
     }
 
-    //****************************************************************************
-
     //GENERAL SETUP
 
     // The below set of helpers will help us to put together the wifi NICs we want
@@ -281,6 +289,59 @@ int main(int argc, char* argv[]) {
         NetDeviceContainer tmp = wifi.Install(wifiPhy, wifiMac, stasL.Get(i));
         devicesL.Add(tmp);
     }
+
+    //****************************************************************************
+    //BATTERY SETUP
+
+    /********************************BATTERY MODEL**********************************************/
+
+    Ptr<GenericBatteryModel> batteryModel = CreateObject<GenericBatteryModel>();
+
+    batteryModel->SetAttribute("FullVoltage", DoubleValue(1.39)); // Vfull
+    batteryModel->SetAttribute("MaxCapacity", DoubleValue(7.0));  // Q
+
+    batteryModel->SetAttribute("NominalVoltage", DoubleValue(1.18));  // Vnom
+    batteryModel->SetAttribute("NominalCapacity", DoubleValue(6.25)); // QNom
+
+    batteryModel->SetAttribute("ExponentialVoltage", DoubleValue(1.28)); // Vexp
+    batteryModel->SetAttribute("ExponentialCapacity", DoubleValue(1.3)); // Qexp
+
+    batteryModel->SetAttribute("InternalResistance", DoubleValue(0.0046));   // R
+    batteryModel->SetAttribute("TypicalDischargeCurrent", DoubleValue(1.3)); // i typical
+    batteryModel->SetAttribute("CutoffVoltage", DoubleValue(1.0));           // End of charge.
+
+    // Capacity Ah(qMax) * (Vfull) voltage * 3600 = (7 * 1.39 * 3.6) = 35028
+    batteryModel->SetAttribute("BatteryType", EnumValue(NIMH_NICD)); // Battery type
+
+    /********************************BATTERY MODEL**********************************************/
+
+    std::vector<Ptr<SimpleDeviceEnergyModel>> deviceEnergyModelsL;
+    std::vector<Ptr<SimpleDeviceEnergyModel>> deviceEnergyModelsR;
+
+    for (int i = 0; i < numbHosts/2; i++) {
+        Ptr<SimpleDeviceEnergyModel> deviceEnergyModelL = CreateObject<SimpleDeviceEnergyModel>();
+
+        // Set deviceEnergyModel attributes...
+        deviceEnergyModelL->SetEnergySource(batteryModel);
+        deviceEnergyModelL->SetNode(stasL.Get(i));
+        deviceEnergyModelL->SetCurrentA(6.5); // Set the actual draw of energy
+
+        // Append deviceEnergyModel to the vector
+        deviceEnergyModelsL.push_back(deviceEnergyModelL);
+
+        Ptr<SimpleDeviceEnergyModel> deviceEnergyModelR = CreateObject<SimpleDeviceEnergyModel>();
+
+        // Set deviceEnergyModel attributes...
+        deviceEnergyModelR->SetEnergySource(batteryModel);
+        deviceEnergyModelR->SetNode(stasL.Get(i));
+        deviceEnergyModelR->SetCurrentA(6.5); // Set the actual draw of energy
+
+        // Append deviceEnergyModel to the vector
+        deviceEnergyModelsR.push_back(deviceEnergyModelR);
+    }
+
+
+    //****************************************************************************
 
     //MOBILITY STAS
     // Note that with FixedRssLossModel, the positions below are not
@@ -392,7 +453,8 @@ int main(int argc, char* argv[]) {
                                     packetSize,
                                     numPackets,
                                     interval,
-                                    stasL.Get(i));
+                                    stasL.Get(i),
+                                    deviceEnergyModelsL[i]);
                                     
         }
     } else if (systemId == 1) {
@@ -405,7 +467,8 @@ int main(int argc, char* argv[]) {
                                     packetSize,
                                     numPackets,
                                     interval,
-                                    stasR.Get(i));
+                                    stasR.Get(i),
+                                    deviceEnergyModelsR[i]);
                                     
         }
     }
