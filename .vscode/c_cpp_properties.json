@@ -4,7 +4,9 @@
             "name": "Linux",
             "includePath": [
                 "/home/della/tarballs/ns-allinone-3.40/ns-3.40/build/**",
-                "/usr/include/openmpi-x86_64"
+                "/usr/include/openmpi-x86_64",
+                "/home/della/git/eigen/Eigen/**",
+                "/usr/local/include/eigen3"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

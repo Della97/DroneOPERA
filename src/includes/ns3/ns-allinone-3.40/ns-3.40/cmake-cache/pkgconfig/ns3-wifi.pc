@@ -1,0 +1,13 @@
+exec_prefix="/usr/local/bin"
+libdir="/usr/local/lib64"
+includedir="/usr/local/include"
+
+Name: ns3-wifi
+Description: 
+URL: 
+Version: 3.40
+Requires:  ns3-network ns3-propagation ns3-energy ns3-spectrum ns3-antenna ns3-mobility
+Requires.private: 
+Cflags: -I"${includedir}"  -I/usr/include -I/usr -I/usr/local/include/eigen3 -I/usr/include/freetype2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/gtk-3.0 -I/usr/include/cairo -I/usr/include/pango-1.0 -I/usr/include/harfbuzz -I/usr/include/atk-1.0 -I/usr/include/libxml2 -I/usr/include/openmpi-x86_64
+Libs: -L"${libdir}" -lns3.40-wifi-default  -lns3.40-network-default -lns3.40-propagation-default -lns3.40-energy-default -lns3.40-spectrum-default -lns3.40-antenna-default -lns3.40-mobility-default /usr/lib64/libgsl.so /usr/lib64/libgslcblas.so
+Libs.private: -L"${libdir}" 

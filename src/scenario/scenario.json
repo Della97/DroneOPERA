@@ -1,0 +1,188 @@
+{
+  "Drones": [
+    {
+      "weight": 1200.5,
+      "numbPropellers": 4.0,
+      "propellersRadius": 0.1,
+      "speed": 15.0,
+      "energy": 200.0,
+      "dragCoefficient": 0.3,
+      "hardware": [
+        [0.0, 1.0, 5.0, 5.0],
+        [2.0, 3.5, 7.5, 5.0]
+      ],
+      "numLocalIter": 10000.0,
+      "cpuCyclePerOperation": 3.0,
+      "operationPerData": 200000.0,
+      "numbTrainDataSet": 60.0,
+      "switchCapacitance": 8e-11,
+      "cpuFreq": 1.5,
+      "voltage": 1.3,
+      "maxHeight": 40.0,
+      "bounds": {
+        "xMin": 0.0,
+        "xMax": 250.0,
+        "yMin": 0.0,
+        "yMax": 250.0,
+        "zMin": 0.0,
+        "zMax": 100.0
+      },
+      "aoi": {
+        "xMin": 50.0,
+        "xMax": 200.0,
+        "yMin": 50.0,
+        "yMax": 200.0,
+        "zMin": 5.0,
+        "zMax": 100.0
+      },
+      "avgVelocity": 12.0,
+      "initialCoordinates": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "bandwidth": 20.0,
+      "wirelessTransmissionPower": 0.1,
+      "carrierFrequency": 2.4e9,
+      "localModelSize": 1e6
+    },
+    {
+      "weight": 1200.5,
+      "numbPropellers": 4.0,
+      "propellersRadius": 0.1,
+      "speed": 15.0,
+      "energy": 200.0,
+      "dragCoefficient": 0.32,
+      "hardware": [
+        [0.0, 1.0, 5.0, 5.0],
+        [2.0, 3.5, 7.5, 5.0]
+      ],
+      "numLocalIter": 10000.0,
+      "cpuCyclePerOperation": 3.0,
+      "operationPerData": 200000.0,
+      "numbTrainDataSet": 60.0,
+      "switchCapacitance": 8e-11,
+      "cpuFreq": 1.5,
+      "voltage": 1.3,
+      "maxHeight": 40.0,
+      "bounds": {
+        "xMin": 0.0,
+        "xMax": 250.0,
+        "yMin": 250.0,
+        "yMax": 500.0,
+        "zMin": 0.0,
+        "zMax": 100.0
+      },
+      "aoi": {
+        "xMin": 50.0,
+        "xMax": 200.0,
+        "yMin": 300.0,
+        "yMax": 450.0,
+        "zMin": 5.0,
+        "zMax": 100.0
+      },
+      "avgVelocity": 12.0,
+      "initialCoordinates": {
+        "x": 1.0,
+        "y": 250.0,
+        "z": 1.0
+      },
+      "bandwidth": 20.0,
+      "wirelessTransmissionPower": 0.1,
+      "carrierFrequency": 2.4e9,
+      "localModelSize": 1e6
+    },
+    {
+      "weight": 1200.5,
+      "numbPropellers": 4.0,
+      "propellersRadius": 0.1,
+      "speed": 15.0,
+      "energy": 200.0,
+      "dragCoefficient": 0.31,
+      "hardware": [
+        [0.0, 1.0, 5.0, 5.0],
+        [2.0, 3.5, 7.5, 5.0]
+      ],
+      "numLocalIter": 10000.0,
+      "cpuCyclePerOperation": 3.0,
+      "operationPerData": 200000.0,
+      "numbTrainDataSet": 60.0,
+      "switchCapacitance": 8e-11,
+      "cpuFreq": 1.5,
+      "voltage": 1.3,
+      "maxHeight": 40.0,
+      "bounds": {
+        "xMin": 250.0,
+        "xMax": 500.0,
+        "yMin": 0.0,
+        "yMax": 250.0,
+        "zMin": 0.0,
+        "zMax": 100.0
+      },
+      "aoi": {
+        "xMin": 300.0,
+        "xMax": 450.0,
+        "yMin": 50.0,
+        "yMax": 200.0,
+        "zMin": 5.0,
+        "zMax": 100.0
+      },
+      "avgVelocity": 12.0,
+      "initialCoordinates": {
+        "x": 250.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "bandwidth": 20.0,
+      "wirelessTransmissionPower": 0.1,
+      "carrierFrequency": 2.4e9,
+      "localModelSize": 1e6
+    },
+    {
+      "weight": 1300.0,
+      "numbPropellers": 4.0,
+      "propellersRadius": 0.1,
+      "speed": 16.5,
+      "energy": 220.0,
+      "dragCoefficient": 0.29,
+      "hardware": [
+        [1.1, 2.0, 4.5, 5.0],
+        [0.5, 1.5, 6.0, 5.0]
+      ],
+      "numLocalIter": 10000.0,
+      "cpuCyclePerOperation": 3.0,
+      "operationPerData": 200000.0,
+      "numbTrainDataSet": 60.0,
+      "switchCapacitance": 8e-11,
+      "cpuFreq": 1.6,
+      "voltage": 1.3,
+      "maxHeight": 40.0,
+      "bounds": {
+        "xMin": 250.0,
+        "xMax": 500.0,
+        "yMin": 250.0,
+        "yMax": 500.0,
+        "zMin": 0.0,
+        "zMax": 100.0
+      },
+      "aoi": {
+        "xMin": 300.0,
+        "xMax": 450.0,
+        "yMin": 300.0,
+        "yMax": 450.0,
+        "zMin": 5.0,
+        "zMax": 100.0
+      },
+      "avgVelocity": 14.0,
+      "initialCoordinates": {
+        "x": 250.0,
+        "y": 250.0,
+        "z": 1.0
+      },
+      "bandwidth": 20.0,
+      "wirelessTransmissionPower": 0.1,
+      "carrierFrequency": 2.4e9,
+      "localModelSize": 1e6
+    }
+  ]
+}

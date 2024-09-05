@@ -23,7 +23,7 @@ ns3 library (installed under /home/username/tarballs) and ns3-netvisualyzer-modu
    
 3. Run the code:
    ```bash
-   make run
+   make run_mpi
 
 4. Run the simulation in NetSimulyzer:
    - Load the .xml file generated in src/build inside NetSimulyzer

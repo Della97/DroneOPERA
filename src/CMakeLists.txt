@@ -5,8 +5,8 @@ project(drone++)
 set(CMAKE_CXX_STANDARD 17)
 
 # Set the path to the NS-3 build and include directories
-set(NS3_BUILD_DIR "$ENV{HOME}/tarballs/ns-allinone-3.40/ns-3.40/build/lib")
-set(NS3_INCLUDE_DIR "$ENV{HOME}/tarballs/ns-allinone-3.40/ns-3.40/build/include")
+set(NS3_BUILD_DIR "includes/ns3/ns-allinone-3.40/ns-3.40/build/lib")
+set(NS3_INCLUDE_DIR "includes/ns3/ns-allinone-3.40/ns-3.40/build/include")
 
 # Include directories
 include_directories(${NS3_INCLUDE_DIR})
@@ -17,26 +17,30 @@ link_directories(${NS3_BUILD_DIR})
 # Add your source files and header files
 add_executable(out 
     main.cpp
+    drone/Drone.cpp
+    mobility/custom-mobility-model.cpp
+    energy/energy.cpp
+    parser/JsonParser.cpp
 )
 
 # Link the necessary NS-3 libraries
 target_link_libraries(out
-    ns3.40-core-debug
-    ns3.40-network-debug
-    ns3.40-internet-debug
-    ns3.40-point-to-point-debug
-    ns3.40-applications-debug
-    ns3.40-wifi-debug
-    ns3.40-mobility-debug
-    ns3.40-csma-debug
-    ns3.40-propagation-debug
-    ns3.40-netanim-debug
-    ns3.40-netsimulyzer-debug
-    ns3.40-buildings-debug
-    ns3.40-stats-debug
-    ns3.40-mpi-debug
-    ns3.40-energy-debug
-    ns3.40-energy-test-debug
+    ns3.40-core-default
+    ns3.40-network-default
+    ns3.40-internet-default
+    ns3.40-point-to-point-default
+    ns3.40-applications-default
+    ns3.40-wifi-default
+    ns3.40-mobility-default
+    ns3.40-csma-default
+    ns3.40-propagation-default
+    ns3.40-netanim-default
+    ns3.40-netsimulyzer-default
+    ns3.40-buildings-default
+    ns3.40-stats-default
+    ns3.40-mpi-default
+    ns3.40-energy-default
+    ns3.40-energy-test-default
 )
 
 # Use mpic++ as the C++ compiler
@@ -59,3 +63,4 @@ add_custom_target(clean-all
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/install_manifest.txt
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/out
 )
+
