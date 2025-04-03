@@ -56,13 +56,14 @@ private:
     // NS-3 related fields
     ns3::Ptr<ns3::Node> node;  // NS-3 Node reference
     ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModel;  // Pointer to SimpleDeviceEnergyModel
+    double maxCapacity;
 
 public:
     // Default Constructor
     Drone();
 
     // Constructor that initializes the drone with node, energy model, and data from JSON
-    Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModelRef, const std::string& jsonFilePath, int index);
+    Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModelRef, double maxCapacityJ, const std::string& jsonFilePath, int index);
 
     // Setters for drone-specific fields
     void setWeight(double wt);
@@ -107,6 +108,7 @@ public:
     double getDragCoefficient() const;
     double getSpeed() const;
     double getEnergy() const;
+    double getMaxCapacity() const;
     const std::vector<std::vector<double>>& getHardware() const;
 
     // Getters for mobility and bounds fields
@@ -145,6 +147,7 @@ public:
     double calculatePDrag();
     double calculateCommEnergy(double distance);
     double calculateComputePower();
+    double calcMovePower(int state);
 };
 
 #endif // DRONE_H

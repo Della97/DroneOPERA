@@ -105,6 +105,7 @@ void EdgeLogic(Ptr<Socket> socket) {
     Time now = Simulator::Now();
     // Write the received data and timestamp to the file
     v.push_back(receivedData);
+    std::cout << receivedData << std::endl;
   }
 }  //ReceivePacket()
 
@@ -125,11 +126,15 @@ static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, 
 
     Vector pos = mobilityModel->GetPosition();
     double ampere = 0;
+    double mobilityA = 0;
+    double computingA = 0;
+    double hwA = 0;
 
     //TRAIN
     if (mobilityModel->getState() == 0) {
         ampere = 0;
-        ampere = drone.calculateVertPower()/volt;
+        ampere = drone.calcMovePower(mobilityModel->getState())/volt;
+        mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
         battery->SetCurrentA(ampere); // Set the actual draw of energy
     }
     if (mobilityModel->getState() == 1) {
@@ -145,7 +150,10 @@ static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, 
                     sum += hwElement[1]/hwElement[3];
                 }
             }
-            ampere = drone.calculateComputePower() + drone.calculateHoverPower()/volt + drone.calculatePDrag()/volt + sum;
+            ampere = drone.calculateComputePower()/1.3 + drone.calcMovePower(mobilityModel->getState())/volt + sum;
+            computingA = drone.calculateComputePower()/1.3;
+            mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+            hwA = sum;
             battery->SetCurrentA(ampere); // Set the actual draw of energy
         } else {  //NOT IN AOI NO COMP
             double sum = 0.0;
@@ -157,10 +165,11 @@ static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, 
                 }
             }
             //only hover + drag
-            ampere = drone.calculateHoverPower()/volt + drone.calculatePDrag()/volt;
+            ampere = drone.calcMovePower(mobilityModel->getState())/volt;
+            mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
             battery->SetCurrentA(ampere); // Set the actual draw of energy
         }
-        //std::cout << "Hovert Power + drag + computation: " << drone.calculateComputePower() << std::endl;
+        //std::cout << "Hover Power + drag + computation: " << drone.calculateComputePower() << std::endl;
     }
     if (mobilityModel->getState() == 2) {  // IN AOI AND COMPUTE
         ampere = 0;
@@ -173,21 +182,31 @@ static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, 
                 sum += hwElement[2]/hwElement[3]; //HARDWARE ON
             }
         }
-        ampere = drone.calculateComputePower() + drone.calculateHoverPower()/volt + drone.calculatePDrag()/volt + sum;
+        ampere = drone.calculateComputePower()/1.3 + drone.calcMovePower(mobilityModel->getState())/volt + sum;
+        computingA = drone.calculateComputePower()/1.3;
+        mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+        hwA = sum;
         battery->SetCurrentA(ampere); // Set the actual draw of energy
     }
     if (mobilityModel->getState() == 3) {
         ampere = 0;
-        ampere = drone.calculateHoverPower()/volt;
+        ampere = drone.calcMovePower(mobilityModel->getState())/volt;
+        mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
         battery->SetCurrentA(ampere); // Set the actual draw of energy
     }
 
+    double percentage = (battery->GetTotalEnergyConsumption() / drone.getMaxCapacity())*100;
+
+    if (drone.getNode()->GetId() != 0){
+        //std::cout << percentage << std::endl;
+    }
+
     //MESSAGE TO SERVER
-    if (pktCount > 0) {
+    if (percentage < 100) {
         // Set the payload string
         std::ostringstream msgx;
         Time now = Simulator::Now();
-        msgx << drone.getNode()->GetId() << " " << pos.x << " " << pos.y << " " << pos.z << " " << battery->GetTotalEnergyConsumption()<< " " << now << " " << mobilityModel->getAoI() << " " << ampere << '\0';
+        msgx << drone.getNode()->GetId() << " " << pos.x << " " << pos.y << " " << pos.z << " " << battery->GetTotalEnergyConsumption()<< " " << now << " " << mobilityModel->getAoI() << " " << ampere << " " << 100-percentage << " " << mobilityA << " " << hwA << " " << computingA << " " << mobilityModel->getState() << '\0';
         uint16_t packetSize = msgx.str().length() + 1;
         Ptr<Packet> packet = Create<Packet>((uint8_t *)msgx.str().c_str(), packetSize);
         socket->Send(packet);
@@ -362,38 +381,112 @@ int main(int argc, char* argv[]) {
 
     /********************************BATTERY MODEL**********************************************/
 
-    Ptr<GenericBatteryModel> batteryModel = CreateObject<GenericBatteryModel>();
+    Ptr<GenericBatteryModel> batteryModel1 = CreateObject<GenericBatteryModel>();
 
-    batteryModel->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
-    batteryModel->SetAttribute("MaxCapacity", DoubleValue(1.0));  // Q in Ah (5000mAh)
+    batteryModel1->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
+    batteryModel1->SetAttribute("MaxCapacity", DoubleValue(3.6));  // Q in Ah (3600mAh)
 
-    batteryModel->SetAttribute("NominalVoltage", DoubleValue(11.1));  // Vnom (3.7V per cell, 3S)
-    batteryModel->SetAttribute("NominalCapacity", DoubleValue(1));  // QNom in Ah
+    batteryModel1->SetAttribute("NominalVoltage", DoubleValue(11.1));  // Vnom (3.7V per cell, 3S)
+    batteryModel1->SetAttribute("NominalCapacity", DoubleValue(3.6));  // QNom in Ah
 
-    batteryModel->SetAttribute("ExponentialVoltage", DoubleValue(11.4)); // Vexp
-    batteryModel->SetAttribute("ExponentialCapacity", DoubleValue(0.5)); // Qexp (around 10% of the capacity)
+    batteryModel1->SetAttribute("ExponentialVoltage", DoubleValue(11.4)); // Vexp
+    batteryModel1->SetAttribute("ExponentialCapacity", DoubleValue(1.8)); // Qexp (around 50% of the capacity)
 
-    batteryModel->SetAttribute("InternalResistance", DoubleValue(0.01));   // R in ohms
-    batteryModel->SetAttribute("TypicalDischargeCurrent", DoubleValue(20)); // i typical in A (20A)
-    batteryModel->SetAttribute("CutoffVoltage", DoubleValue(9.9));           // End of charge (3.3V per cell, 3S)
+    batteryModel1->SetAttribute("InternalResistance", DoubleValue(0.01));   // R in ohms
+    batteryModel1->SetAttribute("TypicalDischargeCurrent", DoubleValue(20)); // i typical in A (20A)
+    batteryModel1->SetAttribute("CutoffVoltage", DoubleValue(9.9));           // End of charge (3.3V per cell, 3S)
 
 
-    // Capacity Ah(qMax) * (Vfull) voltage * 3600 = 1 * 12.6 * 3600 = 45 360
+    // Capacity Ah(qMax) * (Vfull) voltage * 3600 = 9 * 11.1 * 3600 = 360 000
+    /********************************BATTERY MODEL**********************************************/
+    /********************************BATTERY MODEL**********************************************/
+
+    Ptr<GenericBatteryModel> batteryModel2 = CreateObject<GenericBatteryModel>();
+
+    batteryModel2->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
+    batteryModel2->SetAttribute("MaxCapacity", DoubleValue(3.6));  // Q in Ah (3600mAh)
+
+    batteryModel2->SetAttribute("NominalVoltage", DoubleValue(11.1));  // Vnom (3.7V per cell, 3S)
+    batteryModel2->SetAttribute("NominalCapacity", DoubleValue(3.6));  // QNom in Ah
+
+    batteryModel2->SetAttribute("ExponentialVoltage", DoubleValue(11.4)); // Vexp
+    batteryModel2->SetAttribute("ExponentialCapacity", DoubleValue(1.8)); // Qexp (around 50% of the capacity)
+
+    batteryModel2->SetAttribute("InternalResistance", DoubleValue(0.01));   // R in ohms
+    batteryModel2->SetAttribute("TypicalDischargeCurrent", DoubleValue(20)); // i typical in A (20A)
+    batteryModel2->SetAttribute("CutoffVoltage", DoubleValue(9.9));           // End of charge (3.3V per cell, 3S)
+
+
+
+    // Capacity Ah(qMax) * (Vfull) voltage * 3600 = 9 * 11.1 * 3600 = 360 000
+    /********************************BATTERY MODEL**********************************************/
+    /********************************BATTERY MODEL**********************************************/
+
+    Ptr<GenericBatteryModel> batteryModel3 = CreateObject<GenericBatteryModel>();
+
+    batteryModel3->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
+    batteryModel3->SetAttribute("MaxCapacity", DoubleValue(3.6));  // Q in Ah (3600mAh)
+
+    batteryModel3->SetAttribute("NominalVoltage", DoubleValue(11.1));  // Vnom (3.7V per cell, 3S)
+    batteryModel3->SetAttribute("NominalCapacity", DoubleValue(3.6));  // QNom in Ah
+
+    batteryModel3->SetAttribute("ExponentialVoltage", DoubleValue(11.4)); // Vexp
+    batteryModel3->SetAttribute("ExponentialCapacity", DoubleValue(1.8)); // Qexp (around 50% of the capacity)
+
+    batteryModel3->SetAttribute("InternalResistance", DoubleValue(0.01));   // R in ohms
+    batteryModel3->SetAttribute("TypicalDischargeCurrent", DoubleValue(20)); // i typical in A (20A)
+    batteryModel3->SetAttribute("CutoffVoltage", DoubleValue(9.9));           // End of charge (3.3V per cell, 3S)
+
+
+    // Capacity Ah(qMax) * (Vfull) voltage * 3600 = 9 * 11.1 * 3600 = 360 000
+    /********************************BATTERY MODEL**********************************************/
+
+    Ptr<GenericBatteryModel> batteryModel4 = CreateObject<GenericBatteryModel>();
+
+    batteryModel4->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
+    batteryModel4->SetAttribute("MaxCapacity", DoubleValue(3.6));  // Q in Ah (3600mAh)
+
+    batteryModel4->SetAttribute("NominalVoltage", DoubleValue(11.1));  // Vnom (3.7V per cell, 3S)
+    batteryModel4->SetAttribute("NominalCapacity", DoubleValue(3.6));  // QNom in Ah
+
+    batteryModel4->SetAttribute("ExponentialVoltage", DoubleValue(11.4)); // Vexp
+    batteryModel4->SetAttribute("ExponentialCapacity", DoubleValue(1.8)); // Qexp (around 50% of the capacity)
+
+    batteryModel4->SetAttribute("InternalResistance", DoubleValue(0.01));   // R in ohms
+    batteryModel4->SetAttribute("TypicalDischargeCurrent", DoubleValue(20)); // i typical in A (20A)
+    batteryModel4->SetAttribute("CutoffVoltage", DoubleValue(9.9));           // End of charge (3.3V per cell, 3S)
+
+
+
+    // Capacity Ah(qMax) * (Vfull) voltage * 3600 = 9 * 11.1 * 3600 = 360 000 J
     /********************************BATTERY MODEL**********************************************/
 
     
     std::vector<Ptr<SimpleDeviceEnergyModel>> deviceEnergyModels;
-    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel = CreateObject<SimpleDeviceEnergyModel>();
+    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel1 = CreateObject<SimpleDeviceEnergyModel>();
+    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel2 = CreateObject<SimpleDeviceEnergyModel>();
+    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel3 = CreateObject<SimpleDeviceEnergyModel>();
+    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel4 = CreateObject<SimpleDeviceEnergyModel>();
 
-    for (int i = 0; i < 4; i++) {
-        batteryModel->SetNode(stas.Get(i));
-        deviceEnergyModel->SetEnergySource(batteryModel);
-        batteryModel->AppendDeviceEnergyModel(deviceEnergyModel);
-        deviceEnergyModel->SetNode(stas.Get(i));
+    batteryModel1->SetNode(stas.Get(0));
+    deviceEnergyModel1->SetEnergySource(batteryModel1);
+    batteryModel1->AppendDeviceEnergyModel(deviceEnergyModel1);
+    deviceEnergyModel1->SetNode(stas.Get(0));
 
-        // Append deviceEnergyModel to the vector
-        deviceEnergyModels.push_back(deviceEnergyModel);
-    }
+    batteryModel2->SetNode(stas.Get(1));
+    deviceEnergyModel2->SetEnergySource(batteryModel2);
+    batteryModel2->AppendDeviceEnergyModel(deviceEnergyModel2);
+    deviceEnergyModel2->SetNode(stas.Get(1));
+
+    batteryModel3->SetNode(stas.Get(2));
+    deviceEnergyModel3->SetEnergySource(batteryModel3);
+    batteryModel3->AppendDeviceEnergyModel(deviceEnergyModel3);
+    deviceEnergyModel3->SetNode(stas.Get(2));
+
+    batteryModel4->SetNode(stas.Get(3));
+    deviceEnergyModel4->SetEnergySource(batteryModel4);
+    batteryModel4->AppendDeviceEnergyModel(deviceEnergyModel4);
+    deviceEnergyModel4->SetNode(stas.Get(3));
     
 
     //****************************************************************************
@@ -417,11 +510,27 @@ int main(int argc, char* argv[]) {
     // Create the vector of drones
     std::vector<Drone> drones;
 
+    double maxCapacityJ = 3.6 * 11.1 * 3600;
+
     // Create a Node, MobilityModel, and EnergyModel for each drone
     for (int i = 0; i < 4; i++) {
         // Create a Drone object and push it into the vector
-        Drone drone(stas.Get(i), deviceEnergyModels[i], configPath, i);
-        drones.push_back(drone);
+        if (i == 0) {
+            Drone drone(stas.Get(i), deviceEnergyModel1, maxCapacityJ, configPath, i);
+            drones.push_back(drone);
+        }
+        if (i == 1) {
+            Drone drone(stas.Get(i), deviceEnergyModel2, maxCapacityJ, configPath, i);
+            drones.push_back(drone);
+        }
+        if (i == 2) {
+            Drone drone(stas.Get(i), deviceEnergyModel3, maxCapacityJ, configPath, i);
+            drones.push_back(drone);
+        }
+        if (i == 3) {
+            Drone drone(stas.Get(i), deviceEnergyModel4, maxCapacityJ, configPath, i);
+            drones.push_back(drone);
+        }
     }
     
     for (int i = 0; i < 4; i++) {
@@ -583,7 +692,7 @@ int main(int argc, char* argv[]) {
 
     Time now = Simulator::Now();
     //now += Seconds (105);
-    now += Seconds (2200);
+    now += Seconds (1000);
     Simulator::Stop(now);
     Simulator::Run();
 

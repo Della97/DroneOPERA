@@ -10,8 +10,8 @@ Drone::Drone() : weight(0), numbPropellers(0), propellersRadius(0), speed(0), en
                  hoverPower(0), vertPower(0), pDrag(0), commPower(0), commEnergy(0) {}
 
 // Constructor that initializes the drone with node, energy model, and data from JSON
-Drone::Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModelRef, const std::string& jsonFilePath, int index)
-    : node(nodeRef), energyModel(energyModelRef) {
+Drone::Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModelRef, double maxCapacityJ, const std::string& jsonFilePath, int index)
+    : node(nodeRef), energyModel(energyModelRef), maxCapacity(maxCapacityJ) {
     // Initialize the fields using the JSON parser
     JsonParser parser;
     if (!parser.parseJson(jsonFilePath, *this, index)) {
@@ -71,6 +71,7 @@ double Drone::getPropellersRadius() const { return propellersRadius; }
 double Drone::getDragCoefficient() const { return pDrag;}
 double Drone::getSpeed() const { return speed; }
 double Drone::getEnergy() const { return energy; }
+double Drone::getMaxCapacity() const { return maxCapacity; }
 const std::vector<std::vector<double>>& Drone::getHardware() const { return hardware; }
 
 double Drone::getBandwidth() const { return bandwidth; }
@@ -92,15 +93,21 @@ ns3::Ptr<ns3::Node> Drone::getNode() const { return node; }
 ns3::Ptr<ns3::SimpleDeviceEnergyModel> Drone::getEnergyModel() const { return energyModel; }
 
 
+//************************************************************************************************************************
 
-
+/*
 // Energy calculation-related functions
 double Drone::calculateHoverPower() {
-    return calcHoverPower(weight, propellersRadius, numbPropellers);
+    //return calcHoverPower(weight, propellersRadius, numbPropellers);
+    //double radiusPropellers, double numbProp, double dragCoeff, double mass, double speed
+    std::cout << calcHorizontal(propellersRadius, numbPropellers, pDrag, weight, speed) << std::endl;
+    return calcHorizontal(propellersRadius, numbPropellers, pDrag, weight, speed);
 }
 
 double Drone::calculateVertPower() {
-    return calcVertPower(weight, speed);
+    //return calcVertPower(weight, speed);
+    //std::cout << calcAscend(propellersRadius, numbPropellers, pDrag, weight, speed) << std::endl;
+    return calcAscend(propellersRadius, numbPropellers, pDrag, weight, speed);
 }
 
 double Drone::calculatePDrag() {
@@ -110,6 +117,17 @@ double Drone::calculatePDrag() {
     }
     return calcPDrag(propellersRadius, numbPropellers, pDrag, 0, speed);
 }
+*/
+
+double Drone::calcMovePower(int state) {
+    if (state == 0) return P_UAV(weight, pDrag, propellersRadius, numbPropellers, speed, speed, speed);
+    if (state == 1) return P_UAV(weight, pDrag, propellersRadius, numbPropellers, speed, 0, 0);
+    if (state == 2) return P_UAV(weight, pDrag, propellersRadius, numbPropellers, speed, 0, 0);
+    if (state == 3) return P_UAV(weight, pDrag, propellersRadius, numbPropellers, 0, 0, speed);
+    return 0;
+}
+
+//***********************************************************************************************************************
 
 double Drone::calculateCommEnergy(double distance) {
     return calcCommEnergy(power, MLsize, bandwidth, frequency, distance);

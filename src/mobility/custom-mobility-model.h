@@ -50,7 +50,7 @@ private:
   
   Vector m_up = Vector(1.0, 0.0, 0.0);
   Vector m_down = Vector(-1.0, 0.0, 0.0);
-  Vector m_left = Vector(0.0, 2.0, 0.0);
+  Vector m_left = Vector(0.0, 1.0, 0.0);   //VERTICAL (Y)
   Vector m_right = Vector(0.0, -1.0, 0.0);
   Vector up_eight = Vector(0.0, 0.0, 1.0);
   Vector m_vVector = Vector(1.0, 1.0, 1.0); //IN PIU PER ORA NON USATO
@@ -71,10 +71,13 @@ private:
   bool run = true;
   double maxHeight = 50;
   double m_avgVelocity;
+  double m_turn;  //STRENGHT
   bool atEight = false;
   bool descend = false;
   int m_state = 0;
-  bool m_start = false;
+  bool m_start = true;
+  bool m_directionvert = false;
+  double tmp_str = -1;
 };
 
 } // namespace ns3

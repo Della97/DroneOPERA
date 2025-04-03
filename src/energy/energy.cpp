@@ -7,24 +7,46 @@
 #define C 3e8               // Speed of light in m/s
 #define N_0 1e-9            // power spectral dnesity white noise
 
+//************************************************************************************************************************
 
-//Calculate the hovering power (Watts)
-double calcHoverPower(double mass, double radiusPropellers, double numbProp){
-    return (sqrt(pow(((mass/1000)*GRAV), 3)/(2*PI*(radiusPropellers)*radiusPropellers*numbProp*AIR_DENSITY)));
+// Function to calculate the magnitude of a 2D vector (vx, vy)
+double vectorMagnitude2D(double vx, double vy) {
+    return sqrt(vx * vx + vy * vy);
 }
 
-//Calc vertical power
-// mass = drone mass
-// speed = vertical speed
-
-double calcVertPower(double mass, double speed) {
-    return ((mass/1000)*GRAV*speed);
+// Function to calculate Omega (Ω)
+double calculateOmega(double vx, double vy) {
+    return vx * vx + vy * vy;
 }
 
-//Calc drag coeff
-double calcPDrag(double radiusPropellers, double numbProp, double dragCoeff, double vx, double vy){
-    return ((dragCoeff*AIR_DENSITY*(numbProp*PI*radiusPropellers*radiusPropellers)*pow(((vx * vx) + (vy*vy)), 1.5))/8);
+// Function to calculate P_level[n]
+double P_level(double mass, double radiusPropellers, double numbProp, double vx, double vy) {
+    double Omega = calculateOmega(vx, vy);
+    double A = 2 * PI * radiusPropellers * radiusPropellers*numbProp;
+    double V_h = sqrt(((mass/1000) * GRAV) / (2 * AIR_DENSITY * A));
+    return (((mass/1000)*GRAV) * ((mass/1000)*GRAV)) / (sqrt(2) * AIR_DENSITY * A) * (1 / (sqrt(Omega + sqrt(Omega * Omega + 4 * V_h * V_h * V_h * V_h))));
 }
+
+// Function to calculate P_vertical[n]
+double P_vertical(double mass, double vz) {
+    //std::cout << ((mass/1000)*GRAV) * vz << std::endl;
+    return ((mass/1000)*GRAV) * vz;
+}
+
+// Function to calculate P_drag[n]
+double P_drag(double dragCoeff, double radiusPropellers, double numbProp, double vx, double vy) {
+    double Omega = calculateOmega(vx, vy);
+    double A = 2 * PI * radiusPropellers * radiusPropellers*numbProp;
+    //std::cout << (1.0 / 8.0) * dragCoeff * AIR_DENSITY * A * pow(Omega, 1.5) << std::endl;
+    return (1.0 / 8.0) * dragCoeff * AIR_DENSITY * A * pow(Omega, 1.5);
+}
+
+// Function to calculate P_UAV[n]
+double P_UAV(double mass, double dragCoeff, double radiusPropellers, double numbProp, double vx, double vy, double vz) {
+    return P_level((mass/1000), radiusPropellers, numbProp, vx, vy) + P_vertical((mass/1000), vz) + P_drag(dragCoeff, radiusPropellers, numbProp, vx, vy);
+}
+
+//*******************************************************************************************************************************
 
 //Calculate the computing power ()
 // y = switch capacitance constant (CPU)

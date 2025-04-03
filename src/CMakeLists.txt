@@ -16,7 +16,7 @@ link_directories(${NS3_BUILD_DIR})
 
 # Add your source files and header files
 add_executable(out 
-    main.cpp
+    main2.cpp
     drone/Drone.cpp
     mobility/custom-mobility-model.cpp
     energy/energy.cpp
@@ -41,6 +41,7 @@ target_link_libraries(out
     ns3.40-mpi-default
     ns3.40-energy-default
     ns3.40-energy-test-default
+    ns3.40-buildings-default
 )
 
 # Use mpic++ as the C++ compiler

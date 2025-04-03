@@ -1,4 +1,4 @@
-# drone-pp
+# DroneOPERA
 
 ## Getting Started
 
@@ -11,8 +11,8 @@ ns3 library (installed under /home/username/tarballs) and ns3-netvisualyzer-modu
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/Della97/drone-pp.git
-   cd drone-pp
+   git clone https://github.com/Della97/DroneOPERA.git
+   cd DroneOPERA
    
 2. Build the library:
    ```bash

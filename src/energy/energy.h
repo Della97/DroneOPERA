@@ -13,17 +13,21 @@
 //numbProp         ()
 //==>
 //Watts
-double calcHoverPower(double mass, double radiusPropellers, double numbProp);
 
-//Calculate the computing power ()
 
-double calcCompPower(double y, double v, double cyclexop, double opxdata, double Dn, double I);
+double vectorMagnitude2D(double vx, double vy);
 
-//Calc vertical power
-double calcVertPower(double mass, double speed);
+double calculateOmega(double vx, double vy);
 
-//Calc drag coeff
-double calcPDrag(double radiusPropellers, double numbProp, double dragCoeff, double vx, double vy);
+double P_level(double mass, double radiusPropellers, double numbProp, double vx, double vy);
+
+double P_vertical(double mass, double vz);
+
+double P_drag(double dragCoeff, double radiusPropellers, double numbProp, double vx, double vy);
+
+double P_UAV(double mass, double dragCoeff, double radiusPropellers, double numbProp, double vx, double vy, double vz);
+
+//*******************************************************************************************************************
 
 //Calculate data transmission rate (rn)
 // B = Allocated bandwidth
@@ -74,6 +78,8 @@ double calculate_rn(double B, double p_n, double f_c, double d, double xi_LoS, d
 double calcCommEnergy(double p_n, double s_n, double B, double f_c, double d);
 
 
+//Comp power
+double calcCompPower(double y, double v, double cyclexop, double opxdata, double Dn, double I);
 
 
 #endif // ENERGY_H

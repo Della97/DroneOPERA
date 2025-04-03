@@ -24,18 +24,23 @@ TypeId CustomMobilityModel::GetTypeId(void) {
                       MakeDoubleChecker<double>())
         .AddAttribute("AoI", 
                       "Area of Interest",
-                      BoxValue(Box(20.0, 80.0, 20.0, 80.0, 20.0, 80.0)),
+                      BoxValue(Box(0.0, 260.0, 0.0, 260.0, 20.0, 80.0)),
                       MakeBoxAccessor(&CustomMobilityModel::AoI),
                       MakeBoxChecker())
         .AddAttribute("Bounds",
                       "Bounds of the area to cruise.",
-                      BoxValue(Box(0.0, 100.0, 0.0, 100.0, 0.0, 100.0)),
+                      BoxValue(Box(0.0, 260.0, 0.0, 260.0, 0.0, 100.0)),
                       MakeBoxAccessor(&CustomMobilityModel::m_bounds),
                       MakeBoxChecker())
         .AddAttribute("AvgVelocity",
                       "Average velocity of the drone m/s",
                       DoubleValue(5),
                       MakeDoubleAccessor(&CustomMobilityModel::m_avgVelocity),
+                      MakeDoubleChecker<double>())
+        .AddAttribute("TurnStrenght",
+                      "Turn strenght",
+                      DoubleValue(50),
+                      MakeDoubleAccessor(&CustomMobilityModel::m_turn),
                       MakeDoubleChecker<double>());
     return tid;
 }
@@ -130,27 +135,34 @@ void CustomMobilityModel::UpdatePosition(void) {
   Vector tmp = Vector(0.0, 0.0, 0.0);
   if (atEight) {
     if (descend == false) { //SNAKE
-      if (m_direction) {
+      if (m_direction) {   // ===>
         tmp.x = m_up.x * m_avgVelocity;
-        tmp.y = m_up.y * m_avgVelocity;
         m_position = m_position + tmp;
-      } else {
+      } else {           // <====
         //FIX ALL MOVEMENT
         tmp.x = m_up.x * m_avgVelocity;
-        tmp.y = m_up.y * m_avgVelocity;
         m_position = m_position - tmp;
       }
-      if (m_bounds.IsInside(m_position)) {
+      if (m_bounds.IsInside(m_position) && m_start) {
         if (AoI.IsInside(m_position)) {
-          m_start = true;
           setState(2);
         } else {
           setState(1);
         }
         m_event = Simulator::Schedule(delta, &CustomMobilityModel::UpdatePosition, this);
         NotifyCourseChange();
-      } else {
-        m_position = m_position + m_left;
+      } else {  //HERE
+        setState(2);
+        //******************************************************************
+        //  QUI ADESSO FA DESTRA E SINISTRA E BASTA!!!!
+        if (tmp_str <= 0) {
+          tmp_str = m_turn;
+          std::cout << tmp_str << std::endl;
+        }
+        //m_position = m_position + m_left;
+        m_position.y = m_position.y + (m_left.y * m_avgVelocity); //FIX VECTORS
+        tmp_str = tmp_str - m_avgVelocity;
+        std::cout << tmp_str << std::endl;
         if (m_direction) {
           m_position = m_position - tmp;
         } else {
@@ -159,9 +171,18 @@ void CustomMobilityModel::UpdatePosition(void) {
         if (m_bounds.IsInside(m_position)){
           if (AoI.IsInside(m_position)) {
             setState(2);
-            m_start = true;
           } else {
             setState(1);
+          }
+          if (tmp_str <= 0) {
+            m_start = true;
+            if (m_direction == true) {
+              m_direction = false;
+            } else {
+              m_direction = true;
+            }
+          } else {
+            m_start = false;
           }
           m_event = Simulator::Schedule(delta, &CustomMobilityModel::UpdatePosition, this);
           NotifyCourseChange();
@@ -172,11 +193,8 @@ void CustomMobilityModel::UpdatePosition(void) {
           m_event = Simulator::Schedule(delta, &CustomMobilityModel::UpdatePosition, this);
           NotifyCourseChange();
         }
-        if (m_direction == true) {
-          m_direction = false;
-        } else {
-          m_direction = true;
-        }
+
+        //****************************************************
       }
     } else { //DESCEND
       setState(3);
