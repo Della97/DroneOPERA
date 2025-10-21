@@ -55,7 +55,7 @@ private:
 
     // NS-3 related fields
     ns3::Ptr<ns3::Node> node;  // NS-3 Node reference
-    ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModel;  // Pointer to SimpleDeviceEnergyModel
+    ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> energyModel;  // Pointer to SimpleDeviceEnergyModel
     double maxCapacity;
 
 public:
@@ -63,7 +63,7 @@ public:
     Drone();
 
     // Constructor that initializes the drone with node, energy model, and data from JSON
-    Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModelRef, double maxCapacityJ, const std::string& jsonFilePath, int index);
+    Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> energyModelRef, double maxCapacityJ, const std::string& jsonFilePath, int index);
 
     // Setters for drone-specific fields
     void setWeight(double wt);
@@ -99,7 +99,7 @@ public:
 
     // Setters for NS-3 Node and EnergyModel references
     void setNode(ns3::Ptr<ns3::Node> nodeRef);
-    void setEnergyModel(ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModelRef);
+    void setEnergyModel(ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> energyModelRef);
 
     // Getters for drone-specific fields
     double getWeight() const;
@@ -139,7 +139,7 @@ public:
 
     // Getters for NS-3 Node and EnergyModel references
     ns3::Ptr<ns3::Node> getNode() const;
-    ns3::Ptr<ns3::SimpleDeviceEnergyModel> getEnergyModel() const;
+    ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> getEnergyModel() const;
 
     // Energy calculation-related functions
     double calculateHoverPower();

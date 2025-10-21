@@ -1,0 +1,13 @@
+exec_prefix="/usr/local/bin"
+libdir="/usr/local/lib"
+includedir="/usr/local/include"
+
+Name: ns3-aodv
+Description: 
+URL: 
+Version: 3.44
+Requires:  ns3-applications ns3-internet-apps ns3-wifi
+Requires.private: 
+Cflags: -I"${includedir}"  -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr -I/opt/homebrew/include/eigen3 -I/Library/Developer/CommandLineTools/SDKs/MacOSX15.sdk/usr/include/libxml2 -I/opt/homebrew/include -I/opt/homebrew/Cellar/gsl/2.8/include
+Libs: -L"${libdir}" -lns3.44-aodv-default  -lns3.44-applications-default -lns3.44-internet-apps-default -lns3.44-wifi-default
+Libs.private: -L"${libdir}" 

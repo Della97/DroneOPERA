@@ -1,7 +1,6 @@
 /*
 *                 TOPOLOGY STRUCTURE
 *                 -------   -------
-*                  RANK 0    RANK 1
 *                 ------- | -------
 *                         |
 * HOST 0 -------\         |         /------- HOST 2
@@ -35,11 +34,7 @@
 #include "ns3/packet-socket-helper.h"
 #include "ns3/boolean.h"
 #include "ns3/netanim-module.h"
-#include "ns3/netsimulyzer-module.h"
 #include "ns3/gnuplot.h"
-#include "ns3/mpi-module.h"
-#include "ns3/mpi-interface.h"
-#include "ns3/mpi-receiver.h"
 #include "ns3/box.h"
 #include <ns3/energy-module.h>
 #include "ns3/wifi-radio-energy-model-helper.h"
@@ -52,10 +47,17 @@
 #include "mobility/custom-mobility-model.h"
 #include "parser/JsonParser.h"
 
-//MPI
-#ifdef NS3_MPI
-#include <mpi.h>
-#endif
+//SOCKET STUFF
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <string>
+#include <iostream>
+#include <chrono>
+
+#include <iomanip>
+#include <sstream>
+
 
 //STD
 #include <cstdlib>
@@ -68,7 +70,7 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("WifiSimpleInfra");
 
-Ptr<netsimulyzer::LogStream> eventLog;
+//Ptr<netsimulyzer::LogStream> eventLog;
 
 std::vector<std::string> v;
 
@@ -84,18 +86,11 @@ void RxEndCallback (Ptr<const Packet> packet, double rssi)
  *
  * \param socket The receiving socket.
  */
-void EdgeLogic(Ptr<Socket> socket) {
+void EdgeLogic(Ptr<Socket> socket12) {
   Ptr<Packet> packet;
   Address from;
 
-  // Open the file in append mode
-  //std::ofstream outFile("results/results.txt", std::ios::app);
-  //if (!outFile) {
-  //  NS_LOG_ERROR("Failed to open file for writing.");
-  //  return;
-  //}
-
-  while ((packet = socket->RecvFrom(from))) {
+  while ((packet = socket12->RecvFrom(from))) {
     // Process the received packet as needed
     uint8_t buffer[1024];
     packet->CopyData(buffer, packet->GetSize());
@@ -105,9 +100,10 @@ void EdgeLogic(Ptr<Socket> socket) {
     Time now = Simulator::Now();
     // Write the received data and timestamp to the file
     v.push_back(receivedData);
-    std::cout << receivedData << std::endl;
+    //std::cout << receivedData << std::endl;
   }
 }  //ReceivePacket()
+
 
 /**
  * Drone logic. This function sends the coordinate of the node to the server.
@@ -118,17 +114,29 @@ void EdgeLogic(Ptr<Socket> socket) {
  * \param pktInterval The interval between two packets.
  * \param node The done instance.
  */
-static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, Time pktInterval, Drone drone, double volt) {
+static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount, Time pktInterval, Drone drone, double volt) {
     //MOBILITY FIRST AND GATHER DATA
     // Get the Ptr to the MobilityModel from the Drone
     Ptr<CustomMobilityModel> mobilityModel = drone.getNode()->GetObject<CustomMobilityModel>();
-    Ptr<SimpleDeviceEnergyModel> battery = drone.getEnergyModel();
+    Ptr<ns3::energy::SimpleDeviceEnergyModel> battery = drone.getEnergyModel();
 
     Vector pos = mobilityModel->GetPosition();
     double ampere = 0;
     double mobilityA = 0;
     double computingA = 0;
     double hwA = 0;
+
+    int sock1 = socket(AF_INET, SOCK_STREAM, 0);
+
+    sockaddr_in server{};
+    server.sin_family = AF_INET;
+    server.sin_port = htons(7070);
+    inet_pton(AF_INET, "127.0.0.1", &server.sin_addr);
+
+    if (connect(sock1, (struct sockaddr*)&server, sizeof(server)) < 0) {
+        std::cerr << "Connection failed\n";
+    }
+
 
     //TRAIN
     if (mobilityModel->getState() == 0) {
@@ -194,11 +202,24 @@ static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, 
         mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
         battery->SetCurrentA(ampere); // Set the actual draw of energy
     }
-
+    double plot = battery->GetTotalEnergyConsumption();
+    std::cout << "Total energy consumption: " << plot << std::endl;
     double percentage = (battery->GetTotalEnergyConsumption() / drone.getMaxCapacity())*100;
 
-    if (drone.getNode()->GetId() != 0){
-        //std::cout << percentage << std::endl;
+    std::stringstream ss;
+    std::time_t t = std::time(nullptr);
+    ss << "{ \"id\": " << drone.getNode()->GetId()
+       << ", \"time\": \"" << std::put_time(std::localtime(&t), "%H:%M:%S")
+       << "\", \"value\": " << 100 - percentage
+       << ", \"x\": " << pos.x << ", \"y\": " << pos.y << ", \"z\": " << pos.z
+       << " }\n";
+    std::string msg = ss.str();
+    send(sock1, msg.c_str(), msg.size(), 0);
+    //std::cout << msg << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+    if (drone.getNode()->GetId() >= 0){
+        std::cout << drone.getNode()->GetId() << " -> " << 100 - percentage << std::endl;
     }
 
     //MESSAGE TO SERVER
@@ -209,14 +230,14 @@ static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, 
         msgx << drone.getNode()->GetId() << " " << pos.x << " " << pos.y << " " << pos.z << " " << battery->GetTotalEnergyConsumption()<< " " << now << " " << mobilityModel->getAoI() << " " << ampere << " " << 100-percentage << " " << mobilityA << " " << hwA << " " << computingA << " " << mobilityModel->getState() << '\0';
         uint16_t packetSize = msgx.str().length() + 1;
         Ptr<Packet> packet = Create<Packet>((uint8_t *)msgx.str().c_str(), packetSize);
-        socket->Send(packet);
+        socket12->Send(packet);
         if (drone.getNode()->GetId() == 3) {
             //std::cout << "mobility state: " << mobilityModel->getState() << " ID: " << drone.getNode()->GetId() << " Z -> " << pos.z << std::endl;
         }
 
         Simulator::Schedule(pktInterval,
                             &DroneLogic,
-                            socket,
+                            socket12,
                             pktSize,
                             pktCount - 1,
                             pktInterval,
@@ -224,7 +245,8 @@ static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, 
                             volt);
     }
     else {
-        socket->Close();
+        socket12->Close();
+        return;
     }
 }  //DroneLogic()
 
@@ -243,18 +265,6 @@ int main(int argc, char* argv[]) {
     std::cout << "The file path provided is: " << configPath << std::endl;
 
     
-    //////////////////////////////////////
-    //          MPI INIT                //
-    //////////////////////////////////////
-    MpiInterface::Enable (&argc, &argv);
-    GlobalValue::Bind ("SimulatorImplementationType", StringValue ("ns3::DistributedSimulatorImpl"));
-    uint32_t systemId = MpiInterface::GetSystemId ();
-    uint32_t systemCount = MpiInterface::GetSize ();
-    /*
-    char name[MPI_MAX_PROCESSOR_NAME];
-    int length;
-    MPI_Get_processor_name(name, &length);
-    */
     std::string phyMode("DsssRate1Mbps");
     double rss = -80;           // -dBm
     uint32_t packetSize = 1000; // bytes
@@ -285,18 +295,19 @@ int main(int argc, char* argv[]) {
     double maxSpeed = 5;
     double duration = 100;
     std::string outputFileName = "netsimulyzer-mobility-buildings-example.json";
-    std::string phoneModelPath = netsimulyzer::models::SERVER;
-    std::string droneModelPath = netsimulyzer::models::QUADCOPTER_UAV;
+    //std::string phoneModelPath = netsimulyzer::models::SERVER;
+    //std::string droneModelPath = netsimulyzer::models::QUADCOPTER_UAV;
     std::string dname = "Drone";
     std::string sname = "Server";
 
     // ---- NetSimulyzer ----
-    Ptr<ns3::netsimulyzer::Orchestrator> orchestrator = CreateObject<netsimulyzer::Orchestrator>(outputFileName);
+    /*
+    //Ptr<ns3::netsimulyzer::Orchestrator> orchestrator = CreateObject<netsimulyzer::Orchestrator>(outputFileName);
 
     // Mark possible Node locations
-    auto possibleNodeLocations = CreateObject<netsimulyzer::RectangularArea>(
-        orchestrator,
-        Rectangle{minNodePosition, maxNodePosition, minNodePosition, maxNodePosition});
+    //auto possibleNodeLocations = CreateObject<netsimulyzer::RectangularArea>(
+        //orchestrator,
+        //Rectangle{minNodePosition, maxNodePosition, minNodePosition, maxNodePosition});
 
     // Identify the area
     possibleNodeLocations->SetAttribute("Name", StringValue("Possible Node Locations"));
@@ -322,6 +333,7 @@ int main(int argc, char* argv[]) {
         nodeConfigHelper.Set("Name", StringValue(tmp));
         nodeConfigHelper.Install(stas.Get(i));
     }
+    */
     //GENERAL SETUP
 
     // The below set of helpers will help us to put together the wifi NICs we want
@@ -381,7 +393,7 @@ int main(int argc, char* argv[]) {
 
     /********************************BATTERY MODEL**********************************************/
 
-    Ptr<GenericBatteryModel> batteryModel1 = CreateObject<GenericBatteryModel>();
+    Ptr<ns3::energy::GenericBatteryModel> batteryModel1 = CreateObject<ns3::energy::GenericBatteryModel>();
 
     batteryModel1->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
     batteryModel1->SetAttribute("MaxCapacity", DoubleValue(3.6));  // Q in Ah (3600mAh)
@@ -401,7 +413,7 @@ int main(int argc, char* argv[]) {
     /********************************BATTERY MODEL**********************************************/
     /********************************BATTERY MODEL**********************************************/
 
-    Ptr<GenericBatteryModel> batteryModel2 = CreateObject<GenericBatteryModel>();
+    Ptr<ns3::energy::GenericBatteryModel> batteryModel2 = CreateObject<ns3::energy::GenericBatteryModel>();
 
     batteryModel2->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
     batteryModel2->SetAttribute("MaxCapacity", DoubleValue(3.6));  // Q in Ah (3600mAh)
@@ -422,7 +434,7 @@ int main(int argc, char* argv[]) {
     /********************************BATTERY MODEL**********************************************/
     /********************************BATTERY MODEL**********************************************/
 
-    Ptr<GenericBatteryModel> batteryModel3 = CreateObject<GenericBatteryModel>();
+    Ptr<ns3::energy::GenericBatteryModel> batteryModel3 = CreateObject<ns3::energy::GenericBatteryModel>();
 
     batteryModel3->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
     batteryModel3->SetAttribute("MaxCapacity", DoubleValue(3.6));  // Q in Ah (3600mAh)
@@ -441,7 +453,7 @@ int main(int argc, char* argv[]) {
     // Capacity Ah(qMax) * (Vfull) voltage * 3600 = 9 * 11.1 * 3600 = 360 000
     /********************************BATTERY MODEL**********************************************/
 
-    Ptr<GenericBatteryModel> batteryModel4 = CreateObject<GenericBatteryModel>();
+    Ptr<ns3::energy::GenericBatteryModel> batteryModel4 = CreateObject<ns3::energy::GenericBatteryModel>();
 
     batteryModel4->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
     batteryModel4->SetAttribute("MaxCapacity", DoubleValue(3.6));  // Q in Ah (3600mAh)
@@ -462,11 +474,11 @@ int main(int argc, char* argv[]) {
     /********************************BATTERY MODEL**********************************************/
 
     
-    std::vector<Ptr<SimpleDeviceEnergyModel>> deviceEnergyModels;
-    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel1 = CreateObject<SimpleDeviceEnergyModel>();
-    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel2 = CreateObject<SimpleDeviceEnergyModel>();
-    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel3 = CreateObject<SimpleDeviceEnergyModel>();
-    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel4 = CreateObject<SimpleDeviceEnergyModel>();
+    std::vector<Ptr<ns3::energy::SimpleDeviceEnergyModel>> deviceEnergyModels;
+    Ptr<ns3::energy::SimpleDeviceEnergyModel> deviceEnergyModel1 = CreateObject<ns3::energy::SimpleDeviceEnergyModel>();
+    Ptr<ns3::energy::SimpleDeviceEnergyModel> deviceEnergyModel2 = CreateObject<ns3::energy::SimpleDeviceEnergyModel>();
+    Ptr<ns3::energy::SimpleDeviceEnergyModel> deviceEnergyModel3 = CreateObject<ns3::energy::SimpleDeviceEnergyModel>();
+    Ptr<ns3::energy::SimpleDeviceEnergyModel> deviceEnergyModel4 = CreateObject<ns3::energy::SimpleDeviceEnergyModel>();
 
     batteryModel1->SetNode(stas.Get(0));
     deviceEnergyModel1->SetEnergySource(batteryModel1);
@@ -673,7 +685,6 @@ int main(int argc, char* argv[]) {
     // Output what the simulation will do
     //std::cout << "Testing " << numPackets << " packets sent with receiver rss " << rss << " Number of Hosts: " << numbHosts << std::endl;
 
-    if (systemId == 0) {
         for (uint32_t i = 0; i < 4; ++i) {
             
             Simulator::ScheduleWithContext(socketArray[i]->GetNode()->GetId(),
@@ -687,23 +698,23 @@ int main(int argc, char* argv[]) {
                                     12.6);
                                     
         }
-    }
 
 
     Time now = Simulator::Now();
     //now += Seconds (105);
-    now += Seconds (1000);
+    now += Seconds (500);
     Simulator::Stop(now);
     Simulator::Run();
 
-    *infoLog << "Scenario Finished\n";
+    //*infoLog << "Scenario Finished\n";
 
     Simulator::Destroy();
 
     // Exit the MPI execution environment
-    MpiInterface::Disable ();
+    //MpiInterface::Disable ();
 
     std::string filename = "../results/results.csv";
+
     std::ofstream outFile(filename);
 
     if (outFile.is_open()) {

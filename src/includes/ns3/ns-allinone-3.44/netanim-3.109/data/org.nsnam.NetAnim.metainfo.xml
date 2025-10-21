@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.nsnam.NetAnim</id>
+  <project_license>GPL-2.0-only</project_license>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>NetAnim</name>
+  <summary>Offline animator for ns-3</summary>
+  <description>
+    <p>
+      NetAnim is an offline animator. It animates a previously executed
+      simulation using an XML trace file generated during a simulation.
+    </p>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://www.nsnam.org/mediawiki/images/5/50/NetAnim.3.105.png</image>
+      <caption>NetAnim main window</caption>
+    </screenshot>
+  </screenshots>
+  <launchable type="desktop-id">org.nsnam.NetAnim.desktop</launchable>
+  <developer id="nsnam.org">
+    <name>NetAnim Team</name>
+  </developer>
+  <url type="homepage">https://gitlab.com/nsnam/netanim</url>
+  <url type="bugtracker">https://gitlab.com/nsnam/netanim/-/issues</url>
+  <content_rating type="oars-1.1"/>
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </recommends>
+  <releases>
+    <release version="3.110" date="2024-11-01" />
+    <release version="3.109" date="2023-03-12" />
+  </releases>
+</component>

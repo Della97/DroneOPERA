@@ -2,7 +2,8 @@
 #define JSONPARSER_H
 
 #include "../drone/Drone.h"
-#include "rapidjson/document.h"
+#include "../includes/rapidjson/include/rapidjson/document.h"
+#include "../includes/rapidjson/include/rapidjson/filereadstream.h"
 #include <vector>
 #include <string>
 

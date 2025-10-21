@@ -1,0 +1,13 @@
+exec_prefix="/usr/local/bin"
+libdir="/usr/local/lib"
+includedir="/usr/local/include"
+
+Name: ns3-netanim
+Description: 
+URL: 
+Version: 3.44
+Requires:  ns3-wimax ns3-wifi ns3-lte ns3-uan ns3-lr-wpan
+Requires.private: 
+Cflags: -I"${includedir}"  -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr -I/opt/homebrew/include/eigen3 -I/Library/Developer/CommandLineTools/SDKs/MacOSX15.sdk/usr/include/libxml2 -I/opt/homebrew/include -I/opt/homebrew/Cellar/gsl/2.8/include
+Libs: -L"${libdir}" -lns3.44-netanim-default  -lns3.44-wimax-default -lns3.44-wifi-default -lns3.44-lte-default -lns3.44-uan-default -lns3.44-lr-wpan-default
+Libs.private: -L"${libdir}" 

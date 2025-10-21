@@ -1,12 +1,12 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 project(drone++)
 
 # Set the C++ standard to C++17
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # Set the path to the NS-3 build and include directories
-set(NS3_BUILD_DIR "includes/ns3/ns-allinone-3.40/ns-3.40/build/lib")
-set(NS3_INCLUDE_DIR "includes/ns3/ns-allinone-3.40/ns-3.40/build/include")
+set(NS3_BUILD_DIR "includes/ns3/ns-allinone-3.44/ns-3.44/build/lib")
+set(NS3_INCLUDE_DIR "includes/ns3/ns-allinone-3.44/ns-3.44/build/include")
 
 # Include directories
 include_directories(${NS3_INCLUDE_DIR})
@@ -16,7 +16,7 @@ link_directories(${NS3_BUILD_DIR})
 
 # Add your source files and header files
 add_executable(out 
-    main2.cpp
+    main.cpp
     drone/Drone.cpp
     mobility/custom-mobility-model.cpp
     energy/energy.cpp
@@ -25,31 +25,30 @@ add_executable(out
 
 # Link the necessary NS-3 libraries
 target_link_libraries(out
-    ns3.40-core-default
-    ns3.40-network-default
-    ns3.40-internet-default
-    ns3.40-point-to-point-default
-    ns3.40-applications-default
-    ns3.40-wifi-default
-    ns3.40-mobility-default
-    ns3.40-csma-default
-    ns3.40-propagation-default
-    ns3.40-netanim-default
-    ns3.40-netsimulyzer-default
-    ns3.40-buildings-default
-    ns3.40-stats-default
-    ns3.40-mpi-default
-    ns3.40-energy-default
-    ns3.40-energy-test-default
-    ns3.40-buildings-default
+    ns3.44-core-default
+    ns3.44-network-default
+    ns3.44-internet-default
+    ns3.44-point-to-point-default
+    ns3.44-applications-default
+    ns3.44-wifi-default
+    ns3.44-mobility-default
+    ns3.44-csma-default
+    ns3.44-propagation-default
+    ns3.44-netanim-default
+    #ns3.40-netsimulyzer-default
+    ns3.44-buildings-default
+    ns3.44-stats-default
+    #ns3.44-mpi-default
+    ns3.44-energy-default
+    ns3.44-buildings-default
 )
 
 # Use mpic++ as the C++ compiler
-set(CMAKE_CXX_COMPILER mpic++)
+set(CMAKE_CXX_COMPILER g++)
 
 # Add a custom target to run the executable with MPI
 add_custom_target(run_mpi
-    COMMAND mpiexec -n 2 ${CMAKE_CURRENT_BINARY_DIR}/out
+    COMMAND g++ -n 2 ${CMAKE_CURRENT_BINARY_DIR}/out
     DEPENDS out
     WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
 )

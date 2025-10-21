@@ -5,7 +5,22 @@
 #define PI 3.14159          //()
 #define N_0 1e-9            //()
 #define C 3e8               // Speed of light in m/s
-#define N_0 1e-9            // power spectral dnesity white noise
+#define N_0 1e-9            // power spectral density white noise
+
+//*******************************************************************************************************************************
+
+// Costants
+#define T_AMBIENT 30.0                  // Ambient temperature in °C
+#define T_REF 25.0                      // Reference temperature in °C
+#define DT 1.0                          // Timestep (seconds)
+
+#define THERMAL_MASS 5.0               // Arbitrary thermal capacity
+#define HEAT_GEN_FACTOR 0.01           // Heat per m/s
+#define COOLING_COEFF 0.03             // Cooling per m/s wind
+
+#define BASE_DEGRADATION_RATE 0.00001  // Capacity loss/sec at T_REF
+#define TEMP_SENSITIVITY_ALPHA 0.07    // Temp sensitivity
+
 
 //************************************************************************************************************************
 
@@ -93,7 +108,7 @@ double calcJ(double volt, double charge){
 // 11.35 volts
 // 60 frame per second
 double test(double numCycle, double switchc, double freq){
-    return ((numCycle*switchc*pow(freq, 2))/11.25)*60;
+    return ((numCycle*switchc*pow(freq, 2))/11.35)*60;
 }
 
 
@@ -125,3 +140,38 @@ double calculate_rn(double B, double p_n, double f_c, double d) {
 double calcCommEnergy(double p_n, double s_n, double B, double f_c, double d) {
     return ((p_n * s_n) / calculate_rn(B, p_n, f_c, d))/12.6;
 }
+
+//*******************************************************************************************************************************
+
+double updateDroneTemperature(double currentTemp, double speed, double ambientTemp) {
+    double heatGenerated = HEAT_GEN_FACTOR * speed;
+    double cooling = COOLING_COEFF * speed * (currentTemp - ambientTemp);
+    double deltaT = (heatGenerated - cooling) / THERMAL_MASS;
+    return currentTemp + deltaT * DT;
+}
+
+
+/**
+ * Calculates the degradation of the battery due to temperature at the current time step.
+ *
+ * @param currentTemp         The current internal drone temperature (in °C)
+ * @param batteryCapacity     The current battery capacity (in Wh)
+ * @return                    The degradation amount (in Wh) to subtract from the battery capacity
+ */
+double calculateDegradation(double currentTemp, double batteryCapacity) {
+    // Temperature difference from reference (in °C)
+    double tempDiff = currentTemp - T_REF;
+
+    // Exponential degradation rate adjustment due to temperature
+    // BASE_DEGRADATION_RATE is in (1 / s)
+    // TEMP_SENSITIVITY_ALPHA is unitless (°C⁻¹), so this expression is also (1 / s)
+    double degradationRate = BASE_DEGRADATION_RATE * exp(TEMP_SENSITIVITY_ALPHA * tempDiff);
+
+    // Multiply by battery capacity (Wh) and time step (s)
+    // Result is energy lost due to degradation in this time step (Wh)
+    double degradation = degradationRate * DT * batteryCapacity;
+
+    return degradation;  // Wh
+}
+
+

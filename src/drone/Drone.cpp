@@ -10,7 +10,7 @@ Drone::Drone() : weight(0), numbPropellers(0), propellersRadius(0), speed(0), en
                  hoverPower(0), vertPower(0), pDrag(0), commPower(0), commEnergy(0) {}
 
 // Constructor that initializes the drone with node, energy model, and data from JSON
-Drone::Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModelRef, double maxCapacityJ, const std::string& jsonFilePath, int index)
+Drone::Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> energyModelRef, double maxCapacityJ, const std::string& jsonFilePath, int index)
     : node(nodeRef), energyModel(energyModelRef), maxCapacity(maxCapacityJ) {
     // Initialize the fields using the JSON parser
     JsonParser parser;
@@ -60,7 +60,7 @@ void Drone::setNode(ns3::Ptr<ns3::Node> nodeRef) {
     node = nodeRef;
 }
 
-void Drone::setEnergyModel(ns3::Ptr<ns3::SimpleDeviceEnergyModel> energyModelRef) {
+void Drone::setEnergyModel(ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> energyModelRef) {
     energyModel = energyModelRef;
 }
 
@@ -90,7 +90,7 @@ double Drone::getCpuFreq() const { return cpuFreq; }
 
 // Getters for NS-3 Node and EnergyModel references
 ns3::Ptr<ns3::Node> Drone::getNode() const { return node; }
-ns3::Ptr<ns3::SimpleDeviceEnergyModel> Drone::getEnergyModel() const { return energyModel; }
+ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> Drone::getEnergyModel() const { return energyModel; }
 
 
 //************************************************************************************************************************

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=NetAnim
+GenericName=NetAnim
+Type=Application
+Comment=Offline animator for ns-3. It animates a previously executed simulation using an XML trace file generated during a simulation.
+Icon=org.nsnam.NetAnim
+Exec=netanim
+Terminal=false
+StartupNotify=false
+Keywords=animator;simulation;ns3;ns-3;
+Categories=Development;

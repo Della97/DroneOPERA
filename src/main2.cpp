@@ -35,11 +35,11 @@
 #include "ns3/packet-socket-helper.h"
 #include "ns3/boolean.h"
 #include "ns3/netanim-module.h"
-#include "ns3/netsimulyzer-module.h"
+//#include "ns3/netsimulyzer-module.h"
 #include "ns3/gnuplot.h"
-#include "ns3/mpi-module.h"
-#include "ns3/mpi-interface.h"
-#include "ns3/mpi-receiver.h"
+//#include "ns3/mpi-module.h"
+//#include "ns3/mpi-interface.h"
+//#include "ns3/mpi-receiver.h"
 #include "ns3/box.h"
 #include <ns3/energy-module.h>
 #include "ns3/wifi-radio-energy-model-helper.h"
@@ -53,10 +53,17 @@
 #include "mobility/custom-mobility-model.h"
 #include "parser/JsonParser.h"
 
-//MPI
-#ifdef NS3_MPI
-#include <mpi.h>
-#endif
+//SOCK STUFF
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <string>
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
 
 //STD
 #include <cstdlib>
@@ -69,7 +76,7 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("WifiSimpleInfra");
 
-Ptr<netsimulyzer::LogStream> eventLog;
+//Ptr<netsimulyzer::LogStream> eventLog;
 
 std::vector<std::string> v;
 
@@ -85,7 +92,7 @@ void RxEndCallback (Ptr<const Packet> packet, double rssi)
  *
  * \param socket The receiving socket.
  */
-void EdgeLogic(Ptr<Socket> socket) {
+void EdgeLogic(Ptr<Socket> socket12) {
   Ptr<Packet> packet;
   Address from;
 
@@ -95,8 +102,18 @@ void EdgeLogic(Ptr<Socket> socket) {
   //  NS_LOG_ERROR("Failed to open file for writing.");
   //  return;
   //}
+  int sock1 = socket(AF_INET, SOCK_STREAM, 0);
 
-  while ((packet = socket->RecvFrom(from))) {
+    sockaddr_in server{};
+    server.sin_family = AF_INET;
+    server.sin_port = htons(7070);
+    inet_pton(AF_INET, "127.0.0.1", &server.sin_addr);
+
+    if (connect(sock1, (struct sockaddr*)&server, sizeof(server)) < 0) {
+        std::cerr << "Connection failed\n";
+    }
+
+  while ((packet = socket12->RecvFrom(from))) {
     // Process the received packet as needed
     uint8_t buffer[1024];
     packet->CopyData(buffer, packet->GetSize());
@@ -106,7 +123,15 @@ void EdgeLogic(Ptr<Socket> socket) {
     Time now = Simulator::Now();
     // Write the received data and timestamp to the file
     v.push_back(receivedData);
-    std::cout << receivedData << std::endl;
+    std::stringstream ss;
+    std::time_t t = std::time(nullptr);
+    ss << "{ \"time\": \"" << std::put_time(std::localtime(&t), "%H:%M:%S") 
+       << "\", \"value\": " << (rand() % 100) << " }\n";
+
+    std::string msg = ss.str();
+    send(sock1, msg.c_str(), msg.size(), 0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    //std::cout << receivedData << std::endl;
   }
 }  //ReceivePacket()
 
@@ -123,7 +148,7 @@ static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, 
     //MOBILITY FIRST AND GATHER DATA
     // Get the Ptr to the MobilityModel from the Drone
     Ptr<CustomMobilityModel> mobilityModel = drone.getNode()->GetObject<CustomMobilityModel>();
-    Ptr<SimpleDeviceEnergyModel> battery = drone.getEnergyModel();
+    Ptr<ns3::energy::SimpleDeviceEnergyModel> battery = drone.getEnergyModel();
 
     Vector pos = mobilityModel->GetPosition();
     double ampere = 0;
@@ -198,8 +223,8 @@ static void DroneLogic(Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, 
 
     double percentage = (battery->GetTotalEnergyConsumption() / drone.getMaxCapacity())*100;
 
-    if (drone.getNode()->GetId() != 0){
-        //std::cout << percentage << std::endl;
+    if (drone.getNode()->GetId() < 100){
+        std::cout << drone.getNode()->GetId() << " -> " << 100 - percentage << std::endl;
     }
 
     //MESSAGE TO SERVER
@@ -249,10 +274,10 @@ int main(int argc, char* argv[]) {
     //////////////////////////////////////
     //          MPI INIT                //
     //////////////////////////////////////
-    MpiInterface::Enable (&argc, &argv);
-    GlobalValue::Bind ("SimulatorImplementationType", StringValue ("ns3::DistributedSimulatorImpl"));
-    uint32_t systemId = MpiInterface::GetSystemId ();
-    uint32_t systemCount = MpiInterface::GetSize ();
+    //MpiInterface::Enable (&argc, &argv);
+    //GlobalValue::Bind ("SimulatorImplementationType", StringValue ("ns3::DistributedSimulatorImpl"));
+    //uint32_t systemId = MpiInterface::GetSystemId ();
+    //uint32_t systemCount = MpiInterface::GetSize ();
     /*
     char name[MPI_MAX_PROCESSOR_NAME];
     int length;
@@ -287,13 +312,14 @@ int main(int argc, char* argv[]) {
     double minSpeed = .1;
     double maxSpeed = 5;
     double duration = 100;
-    std::string outputFileName = "netsimulyzer-mobility-buildings-example.json";
-    std::string phoneModelPath = netsimulyzer::models::SERVER;
-    std::string droneModelPath = netsimulyzer::models::QUADCOPTER_UAV;
+    //std::string outputFileName = "netsimulyzer-mobility-buildings-example.json";
+    //std::string phoneModelPath = netsimulyzer::models::SERVER;
+    //std::string droneModelPath = netsimulyzer::models::QUADCOPTER_UAV;
     std::string dname = "Drone";
     std::string sname = "Server";
 
     // ---- NetSimulyzer ----
+    /*
 
     Ptr<ns3::netsimulyzer::Orchestrator> orchestrator = CreateObject<netsimulyzer::Orchestrator>(outputFileName);
 
@@ -343,6 +369,9 @@ int main(int argc, char* argv[]) {
         netsimulyzer::BuildingConfigurationHelper buildingConfigHelper(orchestrator);
         buildingConfigHelper.Install(buildings);
     }
+
+    */
+
 
 
     //GENERAL SETUP
@@ -404,7 +433,7 @@ int main(int argc, char* argv[]) {
 
     /********************************BATTERY MODEL**********************************************/
 
-    Ptr<GenericBatteryModel> batteryModel1 = CreateObject<GenericBatteryModel>();
+    Ptr<ns3::energy::GenericBatteryModel> batteryModel1 = CreateObject<ns3::energy::GenericBatteryModel>();
 
     batteryModel1->SetAttribute("FullVoltage", DoubleValue(12.6)); // Vfull (4.2V per cell, 3S)
     batteryModel1->SetAttribute("MaxCapacity", DoubleValue(3.6));  // Q in Ah (3600mAh)
@@ -425,8 +454,8 @@ int main(int argc, char* argv[]) {
     /********************************BATTERY MODEL**********************************************/
 
     
-    std::vector<Ptr<SimpleDeviceEnergyModel>> deviceEnergyModels;
-    Ptr<SimpleDeviceEnergyModel> deviceEnergyModel1 = CreateObject<SimpleDeviceEnergyModel>();
+    std::vector<Ptr<ns3::energy::SimpleDeviceEnergyModel>> deviceEnergyModels;
+    Ptr<ns3::energy::SimpleDeviceEnergyModel> deviceEnergyModel1 = CreateObject<ns3::energy::SimpleDeviceEnergyModel>();
 
     batteryModel1->SetNode(stas.Get(0));
     deviceEnergyModel1->SetEnergySource(batteryModel1);
@@ -571,20 +600,18 @@ int main(int argc, char* argv[]) {
     // Output what the simulation will do
     //std::cout << "Testing " << numPackets << " packets sent with receiver rss " << rss << " Number of Hosts: " << numbHosts << std::endl;
 
-    if (systemId == 0) {
-        for (uint32_t i = 0; i < number; ++i) {
+    for (uint32_t i = 0; i < number; ++i) {
             
-            Simulator::ScheduleWithContext(socketArray[i]->GetNode()->GetId(),
-                                    Seconds(1.0),
-                                    &DroneLogic,
-                                    socketArray[i],
-                                    packetSize,
-                                    numPackets,
-                                    interval,
-                                    drones[i],
-                                    12.6);
+        Simulator::ScheduleWithContext(socketArray[i]->GetNode()->GetId(),
+                                Seconds(1.0),
+                                &DroneLogic,
+                                socketArray[i],
+                                packetSize,
+                                numPackets,
+                                interval,
+                                drones[i],
+                                12.6);
                                     
-        }
     }
 
 
@@ -594,12 +621,12 @@ int main(int argc, char* argv[]) {
     Simulator::Stop(now);
     Simulator::Run();
 
-    *infoLog << "Scenario Finished\n";
+    //*infoLog << "Scenario Finished\n";
 
     Simulator::Destroy();
 
     // Exit the MPI execution environment
-    MpiInterface::Disable ();
+    //MpiInterface::Disable ();
 
     std::string filename = "../results/results.csv";
     std::ofstream outFile(filename);

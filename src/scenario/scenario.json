@@ -1,7 +1,7 @@
 {
   "Drones": [
     {
-      "weight": 1200.5,
+      "weight": 2200.5,
       "numbPropellers": 4.0,
       "propellersRadius": 0.1,
       "speed": 15.0,
@@ -13,7 +13,7 @@
       ],
       "numLocalIter": 10000.0,
       "cpuCyclePerOperation": 3.0,
-      "operationPerData": 200000.0,
+      "operationPerData": 600000.0,
       "numbTrainDataSet": 60.0,
       "switchCapacitance": 8e-11,
       "cpuFreq": 1.5,
