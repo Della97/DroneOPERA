@@ -1,6 +1,7 @@
 #include "Drone.h"
 #include "../energy/energy.h"
 #include "../parser/JsonParser.h"
+#include "ns3/energy-module.h"
 #include <iostream>
 
 // Default Constructor
@@ -10,8 +11,8 @@ Drone::Drone() : weight(0), numbPropellers(0), propellersRadius(0), speed(0), en
                  hoverPower(0), vertPower(0), pDrag(0), commPower(0), commEnergy(0) {}
 
 // Constructor that initializes the drone with node, energy model, and data from JSON
-Drone::Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> energyModelRef, double maxCapacityJ, const std::string& jsonFilePath, int index)
-    : node(nodeRef), energyModel(energyModelRef), maxCapacity(maxCapacityJ) {
+Drone::Drone(ns3::Ptr<ns3::Node> nodeRef, ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> energyModelRef, ns3::Ptr<ns3::energy::EnergySource> energySourceRef, double maxCapacityJ, const std::string& jsonFilePath, int index)
+    : node(nodeRef), energyModel(energyModelRef), energySource(energySourceRef), maxCapacity(maxCapacityJ) {
     // Initialize the fields using the JSON parser
     JsonParser parser;
     if (!parser.parseJson(jsonFilePath, *this, index)) {
@@ -64,6 +65,10 @@ void Drone::setEnergyModel(ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> energy
     energyModel = energyModelRef;
 }
 
+void Drone::setEnergySource(ns3::Ptr<ns3::energy::EnergySource> energySourceRef) {
+    energySource = energySourceRef;
+}
+
 // Getters for drone-specific fields
 double Drone::getWeight() const { return weight; }
 double Drone::getNumbPropellers() const { return numbPropellers; }
@@ -91,6 +96,7 @@ double Drone::getCpuFreq() const { return cpuFreq; }
 // Getters for NS-3 Node and EnergyModel references
 ns3::Ptr<ns3::Node> Drone::getNode() const { return node; }
 ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> Drone::getEnergyModel() const { return energyModel; }
+ns3::Ptr<ns3::energy::EnergySource> Drone::getEnergySource() const { return energySource; }
 
 
 //************************************************************************************************************************

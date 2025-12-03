@@ -8,13 +8,25 @@ from matplotlib.colors import Normalize
 from scipy.interpolate import interp1d
 from scipy.interpolate import make_interp_spline
 
-# Set global font sizes
-plt.rcParams['font.size'] = 14          # Default font size for text
-plt.rcParams['axes.labelsize'] = 16      # Font size for x, y, z axis labels
-plt.rcParams['axes.titlesize'] = 16      # Font size for plot titles
-plt.rcParams['xtick.labelsize'] = 12     # Font size for x-axis tick labels
-plt.rcParams['ytick.labelsize'] = 12     # Font size for y-axis tick labels
-plt.rcParams['legend.fontsize'] = 12     # Font size for legend text
+# Try to apply a cleaner style
+try:
+    plt.style.use('seaborn-v0_8-whitegrid')
+except:
+    plt.style.use('ggplot')
+
+# Set global font sizes and styling
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Liberation Sans', 'Bitstream Vera Sans', 'sans-serif']
+plt.rcParams['font.size'] = 20
+plt.rcParams['axes.labelsize'] = 22
+plt.rcParams['axes.titlesize'] = 24
+plt.rcParams['axes.titleweight'] = 'bold'
+plt.rcParams['xtick.labelsize'] = 20
+plt.rcParams['ytick.labelsize'] = 20
+plt.rcParams['legend.fontsize'] = 20
+plt.rcParams['figure.figsize'] = (14, 10)
+plt.rcParams['lines.linewidth'] = 3.0
+plt.rcParams['grid.alpha'] = 0.5
 
 def read_csv(filename):
     # Read the CSV file and split the data manually by spaces
@@ -43,22 +55,26 @@ def plot_percentage_over_time(df):
     # Ensure the data is sorted by time for each drone
     df = df.sort_values(by=['drone_id', 'time']).reset_index(drop=True)
 
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(12, 7))
     
-    # Set up color mapping for each drone_id
-    colors = plt.cm.jet(np.linspace(0, 1, len(df['drone_id'].unique())))
+    # Use a distinct color palette
+    unique_drones = df['drone_id'].unique()
+    colors = plt.cm.tab10(np.linspace(0, 1, len(unique_drones)))
     
     # Loop through each unique drone ID and plot its percentage over time
-    for i, drone_id in enumerate(df['drone_id'].unique()):
+    for i, drone_id in enumerate(unique_drones):
         drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
-        plt.plot(drone_data['time'], drone_data['percentage'], label=f'Drone {drone_id}', color=colors[i])
+        plt.plot(drone_data['time'], drone_data['percentage'], label=f'Drone {drone_id}', color=colors[i], alpha=0.8)
     
     # Add labels, legend, and title
     plt.xlabel('Time (s)')
-    plt.ylabel('Percentage')
-    plt.legend(title='Drone ID')
-    plt.title('Percentage Over Time for the Drone')
+    plt.ylabel('Battery Percentage (%)')
+    plt.legend(title='Drone ID', frameon=True, fancybox=True, framealpha=0.9)
+    plt.title('Battery Percentage Over Time')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.tight_layout()
 
+    plt.savefig('plots/percentage_over_time.pdf')
     plt.show()
 
 def interpolate_battery_usage(df, num_points=500):
@@ -68,6 +84,10 @@ def interpolate_battery_usage(df, num_points=500):
     for drone_id in df['drone_id'].unique():
         drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
         
+        if len(drone_data) < 2:
+             interpolated_data.append(drone_data)
+             continue
+
         time_new = np.linspace(drone_data['time'].min(), drone_data['time'].max(), num_points)
         interp_func = interp1d(drone_data['time'], drone_data['battery_usage'], kind='linear', fill_value='extrapolate')
         battery_usage_new = interp_func(time_new)
@@ -102,30 +122,34 @@ def plot_battery_usage_phases(df):
     # Remove any rows with NaN or infinite values in battery_usage or time
     df = df.replace([np.inf, -np.inf], np.nan).dropna(subset=['battery_usage', 'time'])
 
-    # Set up a color map to assign different colors to each drone_id
-    colors = plt.cm.jet(np.linspace(0, 1, len(df['drone_id'].unique())))
-
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(12, 7))
     
+    unique_drones = df['drone_id'].unique()
+    colors = plt.cm.tab10(np.linspace(0, 1, len(unique_drones)))
+
     # Loop through each unique drone ID and plot its data
-    for i, drone_id in enumerate(df['drone_id'].unique()):
+    for i, drone_id in enumerate(unique_drones):
         drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
         
         # Plot battery usage over time for this drone with a unique color
-        plt.plot(drone_data['time'], drone_data['battery_usage'], label=f'Drone {drone_id}', color=colors[i])
+        plt.plot(drone_data['time'], drone_data['battery_usage'], label=f'Drone {drone_id}', color=colors[i], alpha=0.8)
     
     # Adding labels, legend, and title
     plt.xlabel('Time (s)')
-    plt.ylabel('Battery Usage (Joules)')
-    plt.title('Battery Usage')
+    plt.ylabel('Energy Consumed (Joules)')
+    plt.title('Total Energy Consumption Over Time')
+    plt.legend(title='Drone ID', frameon=True, fancybox=True, framealpha=0.9)
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.tight_layout()
 
+    plt.savefig('plots/battery_usage_phases.pdf')
     plt.show()
-
-
 
 def create_battery_usage_heatmap(df, grid_size=10):
     # Filter the DataFrame to include only data from the first drone (drone_id = 1)
-    df = df[df['drone_id'] == 1].reset_index(drop=True)
+    # Note: Assuming drone_id 1 exists. If not, pick the first available.
+    target_id = 1 if 1 in df['drone_id'].unique() else df['drone_id'].unique()[0]
+    df = df[df['drone_id'] == target_id].reset_index(drop=True)
 
     # Define the boundaries of the operational field
     x_min, x_max = df['x'].min(), df['x'].max()
@@ -151,28 +175,40 @@ def create_battery_usage_heatmap(df, grid_size=10):
         # Sum the battery usage for the cells the segment passes through
         for xi in range(min(x_indices), max(x_indices) + 1):
             for yi in range(min(y_indices), max(y_indices) + 1):
-                heatmap[xi, yi] += battery_usage / (abs(x2 - x1) + abs(y2 - y1))  # Distribute usage across cells
+                if 0 <= xi < heatmap.shape[0] and 0 <= yi < heatmap.shape[1]:
+                    heatmap[xi, yi] += battery_usage / (abs(x2 - x1) + abs(y2 - y1) + 1e-9)  # Distribute usage across cells
 
     # Create the heatmap plot
     plt.figure(figsize=(10, 8))
-    plt.imshow(heatmap.T, origin='lower', cmap='hot', extent=[x_min, x_max, y_min, y_max])
-    plt.colorbar(label='Total Battery Usage (Joules)')
+    plt.imshow(heatmap.T, origin='lower', cmap='inferno', extent=[x_min, x_max, y_min, y_max], interpolation='gaussian')
+    cbar = plt.colorbar(label='Energy Density (Joules/m)')
     plt.xlabel('X Coordinate [m]')
     plt.ylabel('Y Coordinate [m]')
-    plt.title('Battery Usage Heatmap for Drone 1')
+    plt.title(f'Battery Usage Heatmap for Drone {target_id}')
+    plt.grid(False) # Heatmaps usually look better without grids
+    plt.tight_layout()
     plt.show()
 
-def plot_drones_scenario1(df):
-    fig = plt.figure()
+def plot_drones_scenario(df):
+    fig = plt.figure(figsize=(12, 10))
     ax = fig.add_subplot(111, projection='3d')
 
-    # Normalize ampere draw for color mapping
-    norm = Normalize(vmin=df['current_draw'].min(), vmax=df['current_draw'].max())
-    cmap = cm.viridis  # Use a colormap to represent the ampere draw
+    # Normalize ampere draw for color mapping (set from 0 to max ampere)
+    norm = Normalize(vmin=0, vmax=df['current_draw'].max())  # Set minimum to 0
+    cmap = cm.plasma  # Use a vibrant colormap
+
+    unique_drones = df['drone_id'].unique()
 
     # Plot each drone's data
-    for drone_id in df['drone_id'].unique():
+    for drone_id in unique_drones:
         drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
+
+        # We can plot segments, but for performance and look, let's try to plot continuous lines if possible.
+        # However, to color by current draw, we need segments or a collection.
+        # Let's stick to segments but optimize slightly.
+        
+        # Actually, let's just plot the path as a thin gray line first for continuity
+        ax.plot(drone_data['x'], drone_data['y'], drone_data['z'], color='gray', alpha=0.3, linewidth=0.5)
 
         for i in range(len(drone_data) - 1):
             x1, x2 = drone_data['x'][i], drone_data['x'][i+1]
@@ -183,452 +219,133 @@ def plot_drones_scenario1(df):
             color = cmap(norm(drone_data['current_draw'][i]))
 
             # Plot the line with the color representing the current draw
-            ax.plot([x1, x2], [y1, y2], [z1, z2], color=color, linewidth=2)
+            ax.plot([x1, x2], [y1, y2], [z1, z2], color=color, linewidth=2, alpha=0.8)
 
         # Markers for take-off and landing points
         ax.scatter([drone_data['x'].iloc[0]], [drone_data['y'].iloc[0]], [drone_data['z'].iloc[0]], 
-                   color='green', marker='^', s=100, label='Takeoff' if i == 0 else "")
+                   color='green', marker='^', s=80, label='Takeoff' if drone_id == unique_drones[0] else "", edgecolors='black')
         ax.scatter([drone_data['x'].iloc[-1]], [drone_data['y'].iloc[-1]], [drone_data['z'].iloc[-1]], 
-                   color='red', marker='v', s=100, label='Landing' if i == 0 else "")
+                   color='red', marker='v', s=80, label='Landing' if drone_id == unique_drones[0] else "", edgecolors='black')
 
     # Add a color bar to show the ampere draw mapping
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label('Ampere Draw (A)')
+    cbar = plt.colorbar(sm, ax=ax, pad=0.1, shrink=0.7)
+    cbar.set_label('Current Draw (A)')
 
     # Axes labels
-    ax.set_xlabel('X [m]')
-    ax.set_ylabel('Y [m]')
-    ax.set_zlabel('Z [m]')
+    ax.set_xlabel('X [m]', labelpad=30)
+    ax.set_ylabel('Y [m]', labelpad=30)
+    ax.set_zlabel('Z [m]', labelpad=30)
+    ax.set_title('3D Drone Trajectories & Current Draw', pad=30)
 
-    # Set limits with padding
-    ax.set_xlim(df['x'].min() - 10, df['x'].max() + 10)
-    ax.set_ylim(df['y'].min() - 10, df['y'].max() + 10)
-    ax.set_zlim(df['z'].min() - 10, df['z'].max() + 10)
-
-    # Add a legend for takeoff and landing points
-    ax.legend()
-
-    # Display the plot
-    plt.show()
-
-def plot_drones_scenario(df):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Use the 'coolwarm' colormap, where we can ensure blue-to-red behavior
-    cmap = cm.coolwarm
-    # Define a TwoSlopeNorm to start blue at 0, transition normally, and force red near 12
-    norm = TwoSlopeNorm(vmin=0, vcenter=10, vmax=12)
-
-    # Plot each drone's path
-    for drone_id in df['drone_id'].unique():
-        drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
-
-        for i in range(len(drone_data) - 1):
-            x1, x2 = drone_data['x'][i], drone_data['x'][i+1]
-            y1, y2 = drone_data['y'][i], drone_data['y'][i+1]
-            z1, z2 = drone_data['z'][i], drone_data['z'][i+1]
-            
-            # Get color based on current draw with custom normalization
-            color = cmap(norm(drone_data['current_draw'][i]))
-
-            # Plot the segment with color based on current draw
-            ax.plot([x1, x2], [y1, y2], [z1, z2], color=color, linewidth=2)
-
-        # Mark the takeoff and landing points
-        ax.scatter([drone_data['x'].iloc[0]], [drone_data['y'].iloc[0]], [drone_data['z'].iloc[0]], 
-                   color='blue', marker='^', s=100, label='Takeoff' if i == 0 else "")
-        ax.scatter([drone_data['x'].iloc[-1]], [drone_data['y'].iloc[-1]], [drone_data['z'].iloc[-1]], 
-                   color='red', marker='v', s=100, label='Landing' if i == 0 else "")
-
-    # Add a color bar with the custom colormap and normalization
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label('Ampere Draw (A)')
-
-    # Axes labels and limits
-    ax.set_xlabel('X [m]')
-    ax.set_ylabel('Y [m]')
-    ax.set_zlabel('Z [m]')
-    
+    # Set limits with larger padding
     padding = 20
     ax.set_xlim(df['x'].min() - padding, df['x'].max() + padding)
     ax.set_ylim(df['y'].min() - padding, df['y'].max() + padding)
     ax.set_zlim(df['z'].min() - padding, df['z'].max() + padding)
 
-    # Display the legend for takeoff and landing points
-    ax.legend()
-
-    # Show the plot
-    plt.show()
-
-def plot_drones_scenario(df):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Normalize ampere draw for color mapping (set from 0 to max ampere)
-    norm = Normalize(vmin=0, vmax=df['current_draw'].max())  # Set minimum to 0
-    cmap = cm.viridis  # Use a colormap to represent the ampere draw
-
-    # Plot each drone's data
-    for drone_id in df['drone_id'].unique():
-        drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
-
-        for i in range(len(drone_data) - 1):
-            x1, x2 = drone_data['x'][i], drone_data['x'][i+1]
-            y1, y2 = drone_data['y'][i], drone_data['y'][i+1]
-            z1, z2 = drone_data['z'][i], drone_data['z'][i+1]
-            
-            # Determine the color based on the current draw (ampere) at this segment
-            color = cmap(norm(drone_data['current_draw'][i]))
-
-            # Plot the line with the color representing the current draw, set thinner line width
-            ax.plot([x1, x2], [y1, y2], [z1, z2], color=color, linewidth=1)  # Set to 1 for a thinner line
-
-        # Markers for take-off and landing points
-        ax.scatter([drone_data['x'].iloc[0]], [drone_data['y'].iloc[0]], [drone_data['z'].iloc[0]], 
-                   color='green', marker='^', s=100, label='Takeoff' if i == 0 else "")
-        ax.scatter([drone_data['x'].iloc[-1]], [drone_data['y'].iloc[-1]], [drone_data['z'].iloc[-1]], 
-                   color='red', marker='v', s=100, label='Landing' if i == 0 else "")
-
-    # Add a color bar to show the ampere draw mapping
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label('Ampere Draw (A)')
-
-    # Axes labels
-    ax.set_xlabel('X [m]')
-    ax.set_ylabel('Y [m]')
-    ax.set_zlabel('Z [m]')
-
-    # Set limits with larger padding
-    padding = 20  # Increase padding as needed
-    ax.set_xlim(df['x'].min() - padding, df['x'].max() + padding)
-    ax.set_ylim(df['y'].min() - padding, df['y'].max() + padding)
-    ax.set_zlim(df['z'].min() - padding, df['z'].max() + padding)
-
     # Add a legend for takeoff and landing points
-    ax.legend()
+    ax.legend(loc='upper left')
+    
+    # Improve 3D view
+    ax.view_init(elev=20, azim=-45)
 
     # Display the plot
+    plt.tight_layout()
+    plt.savefig('plots/drones_scenario_3d.pdf')
     plt.show()
 
-
-
 def plot_ampere_draw(df):
-    # Set up a color map to assign different colors to each drone_id
-    colors = plt.cm.jet(np.linspace(0, 1, len(df['drone_id'].unique())))
-
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(12, 7))
     
+    unique_drones = df['drone_id'].unique()
+    colors = plt.cm.tab10(np.linspace(0, 1, len(unique_drones)))
+
     # Loop through each unique drone ID and plot its data
-    for i, drone_id in enumerate(df['drone_id'].unique()):
+    for i, drone_id in enumerate(unique_drones):
         drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
         
         # Plot current (ampere draw) over time for this drone with a unique color
-        plt.plot(drone_data['time'], drone_data['current_draw'], label=f'Drone {drone_id}', color=colors[i])
+        plt.plot(drone_data['time'], drone_data['current_draw'], label=f'Drone {drone_id}', color=colors[i], alpha=0.8)
     
     # Adding labels, legend, and title
     plt.xlabel('Time (s)')
     plt.ylabel('Current Draw (A)')
-    plt.legend(title='Drone ID')
-    plt.title('Current Draw Over Time for the Drone')
+    plt.legend(title='Drone ID', frameon=True, fancybox=True, framealpha=0.9)
+    plt.title('Instantaneous Current Draw Over Time')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.tight_layout()
 
+    plt.savefig('plots/ampere_draw.pdf')
     plt.show()
-
-def plot_ampere_components_over_time(df):
-    # Loop through each unique drone ID
-    for drone_id in df['drone_id'].unique():
-        # Filter the data for the current drone
-        drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
-
-        # Plot each ampere component over time for this drone
-        plt.figure(figsize=(12, 6))
-        plt.plot(drone_data['time'], drone_data['mobility_ampere'], label='Mobility Ampere', color='blue')
-        plt.plot(drone_data['time'], drone_data['hardware_ampere'], label='Hardware Ampere', color='green')
-        plt.plot(drone_data['time'], drone_data['computing_ampere'], label='Computing Ampere', color='red')
-        
-        # Adding labels, legend, and title
-        plt.xlabel('Time (s)')
-        plt.ylabel('Ampere (A)')
-        plt.title(f'Ampere Components Over Time for Drone {drone_id}')
-        plt.legend()
-        plt.show()
-
-def plot_ampere_components_with_total(df):
-    # Loop through each unique drone ID
-    for drone_id in df['drone_id'].unique():
-        # Filter the data for the current drone
-        drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
-
-        # Calculate the total ampere as the sum of the components
-        drone_data['total_ampere'] = (
-            drone_data['mobility_ampere'] + 
-            drone_data['hardware_ampere'] + 
-            drone_data['computing_ampere']
-        )
-
-        # Set up the plot
-        plt.figure(figsize=(12, 6))
-
-        # Plot the total ampere as a line
-        plt.plot(drone_data['time'], drone_data['total_ampere'], label='Total Ampere', color='black', linewidth=2)
-
-        # Stack the individual components as an area plot
-        plt.fill_between(drone_data['time'], 0, drone_data['mobility_ampere'], color='blue', alpha=0.6, label='Mobility Ampere')
-        plt.fill_between(drone_data['time'], drone_data['mobility_ampere'], 
-                         drone_data['mobility_ampere'] + drone_data['hardware_ampere'], color='green', alpha=0.6, label='Hardware Ampere')
-        plt.fill_between(drone_data['time'], 
-                         drone_data['mobility_ampere'] + drone_data['hardware_ampere'], 
-                         drone_data['total_ampere'], color='red', alpha=0.6, label='Computing Ampere')
-
-        # Adding labels, legend, and title
-        plt.xlabel('Time (s)')
-        plt.ylabel('Ampere (A)')
-        plt.title(f'Total Ampere and Components Over Time for Drone {drone_id}')
-        plt.legend()
-        plt.show()
-
-def plot_drone_id_1(df):
-    # Filter the data to only include rows where drone_id is 1
-    df = df[df['drone_id'] == 1].reset_index(drop=True)
-    
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Normalize ampere draw for color mapping (set from 0 to max ampere in filtered data)
-    norm = Normalize(vmin=0, vmax=df['current_draw'].max())
-    cmap = cm.viridis  # Use a colormap to represent the ampere draw
-
-    # Plot the drone's data for drone_id 1
-    for i in range(len(df) - 1):
-        x1, x2 = df['x'][i], df['x'][i+1]
-        y1, y2 = df['y'][i], df['y'][i+1]
-        z1, z2 = df['z'][i], df['z'][i+1]
-        
-        # Determine the color based on the current draw (ampere) at this segment
-        color = cmap(norm(df['current_draw'][i]))
-
-        # Plot the line with the color representing the current draw, set thinner line width
-        ax.plot([x1, x2], [y1, y2], [z1, z2], color=color, linewidth=1)
-
-    # Markers for take-off and landing points
-    ax.scatter([df['x'].iloc[0]], [df['y'].iloc[0]], [df['z'].iloc[0]], 
-               color='green', marker='^', s=100, label='Takeoff')
-    ax.scatter([df['x'].iloc[-1]], [df['y'].iloc[-1]], [df['z'].iloc[-1]], 
-               color='red', marker='v', s=100, label='Landing')
-
-    # Add a color bar to show the ampere draw mapping
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label('Ampere Draw (A)')
-
-    # Axes labels
-    ax.set_xlabel('X [m]')
-    ax.set_ylabel('Y [m]')
-    ax.set_zlabel('Z [m]')
-
-    # Set limits with padding
-    padding = 20  # Increase padding as needed
-    ax.set_xlim(df['x'].min() - padding, df['x'].max() + padding)
-    ax.set_ylim(df['y'].min() - padding, df['y'].max() + padding)
-    ax.set_zlim(df['z'].min() - padding, df['z'].max() + padding)
-
-    # Add a legend for takeoff and landing points
-    ax.legend()
-
-    # Display the plot
-    plt.show()
-
-def plot_ampere_breakdown_for_all_states(df):
-    # Define the states and their labels, excluding state 3
-    states = [0, 2, 1]  # Ordered to show state 1 last as per requirement
-    state_labels = ['Phase 1', 'IN AoI', 'OUT AoI']
-    ampere_components = ['mobility_ampere', 'hardware_ampere', 'computing_ampere']
-    
-    # Find a drone_id that has entries for the required states (0, 2, and 1)
-    drone_ids_with_required_states = df.groupby('drone_id')['state'].nunique()
-    selected_drone_id = drone_ids_with_required_states[drone_ids_with_required_states >= 3].index[0]
-    
-    # Collect the first occurrence of states 0 and 2 for this drone_id
-    state_entries = []
-    for state in [0, 2]:
-        entry = df[(df['drone_id'] == selected_drone_id) & (df['state'] == state)].iloc[0]
-        state_entries.append(entry)
-
-    # Find the last occurrence of state 1 for this drone_id (Outside AoI)
-    outside_aoi_entry = df[(df['drone_id'] == selected_drone_id) & (df['state'] == 1)].iloc[-1]
-    state_entries.append(outside_aoi_entry)  # Add this entry as the last in the list
-
-    # Collect ampere data for plotting
-    state_data = [[entry['mobility_ampere'], entry['hardware_ampere'], entry['computing_ampere']] for entry in state_entries]
-
-    # Convert to DataFrame for easier plotting, using custom labels as index
-    state_df = pd.DataFrame(state_data, columns=ampere_components, index=state_labels)
-    
-    # Plot a bar graph
-    state_df.plot(kind='bar', stacked=True, figsize=(10, 6), colormap="viridis")
-    
-    # Add labels and title
-    plt.xlabel("Drone State")
-    plt.ylabel("Ampere (A)")
-    plt.title(f"Ampere Contribution Breakdown for Drone ID {selected_drone_id} Across Selected States")
-    plt.legend(title="Ampere Component")
-    plt.show()
-
-def plot_ampere_breakdown_for_drone_0(df):
-    # Define the states and their labels, excluding state 3
-    states = [0, 2, 1]  # Ordered to show state 1 last as per requirement
-    state_labels = ['Phase 1', 'IN AoI', 'OUT AoI']
-    ampere_components = ['mobility_ampere', 'hardware_ampere', 'computing_ampere']
-    
-    # Filter data for drone_id == 0
-    df = df[df['drone_id'] == 0]
-    
-    # Collect the first occurrence of states 0 and 2
-    state_entries = []
-    for state in [0, 2]:
-        entry = df[df['state'] == state].iloc[0]
-        state_entries.append(entry)
-    
-    # Find the last occurrence of state 1 (Outside AoI)
-    outside_aoi_entry = df[df['state'] == 1].iloc[-1]
-    state_entries.append(outside_aoi_entry)  # Add this entry as the last in the list
-
-    # Collect ampere data for plotting
-    state_data = [[entry['mobility_ampere'], entry['hardware_ampere'], entry['computing_ampere']] for entry in state_entries]
-    
-    # Convert to DataFrame for easier plotting, using custom labels as index
-    state_df = pd.DataFrame(state_data, columns=ampere_components, index=state_labels)
-    
-    # Plot a bar graph
-    state_df.plot(kind='bar', stacked=True, figsize=(10, 6), colormap="viridis")
-    
-    # Add labels and title
-    plt.xlabel("Drone State")
-    plt.ylabel("Ampere (A)")
-    plt.title("Ampere Contribution Breakdown for Drone ID 0 Across Selected States")
-    plt.legend(title="Ampere Component")
-    plt.show()
-
-def plot_single_drone_trajectory(df, drone_id):
-    # Filter data for the specified drone ID
-    drone_data = df[df['drone_id'] == drone_id].reset_index(drop=True)
-
-    if drone_data.empty:
-        print(f"No data found for drone ID {drone_id}.")
-        return
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Plot the drone's trajectory
-    for i in range(len(drone_data) - 1):
-        x1, x2 = drone_data['x'][i], drone_data['x'][i+1]
-        y1, y2 = drone_data['y'][i], drone_data['y'][i+1]
-        z1, z2 = drone_data['z'][i], drone_data['z'][i+1]
-        
-        # Plot the line segment for the drone's movement
-        ax.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1)
-
-    # Markers for takeoff and landing points
-    ax.scatter([drone_data['x'].iloc[0]], [drone_data['y'].iloc[0]], [drone_data['z'].iloc[0]], 
-               color='green', marker='^', s=100, label='Takeoff')
-    ax.scatter([drone_data['x'].iloc[-1]], [drone_data['y'].iloc[-1]], [drone_data['z'].iloc[-1]], 
-               color='red', marker='v', s=100, label='Landing')
-
-    # Axes labels
-    ax.set_xlabel('X [m]')
-    ax.set_ylabel('Y [m]')
-    ax.set_zlabel('Z [m]')
-
-    # Set limits with padding
-    ax.set_xlim(drone_data['x'].min() - 10, drone_data['x'].max() + 10)
-    ax.set_ylim(drone_data['y'].min() - 10, drone_data['y'].max() + 10)
-    ax.set_zlim(drone_data['z'].min() - 10, drone_data['z'].max() + 10)
-
-    # Add a legend for takeoff and landing points
-    ax.legend()
-
-    # Display the plot
-    plt.title(f"3D Trajectory for Drone {drone_id}")
-    plt.show()
-
 
 def plot_ampere_breakdown_for_drone_01(df):
-    print(df.head())
-    print(df.dtypes)
-
     # Define the states and their labels (0, 2, 3)
     states = [0, 2, 3]  # Ordered as required
-    state_labels = ['Phase 1', 'IN AoI', 'State 3']
+    state_labels = ['Phase 1 (Takeoff/Transit)', 'IN AoI (Operation)', 'Phase 3 (Return/Land)']
     ampere_components = ['mobility_ampere', 'hardware_ampere', 'computing_ampere']
+    component_labels = ['Mobility', 'Hardware', 'Computing']
     
     # Filter data for drone_id == 0
-    df = df[df.iloc[:, 0] == 0]
+    df_drone0 = df[df['drone_id'] == 0]
     
     # Collect the last occurrence of each state
     state_entries = []
-    for state in states:
-        if state in df.iloc[:, 13].values:
-            entry = df[df.iloc[:, 13] == state].iloc[-1]  # Always pick the last occurrence
-            state_entries.append(entry)
+    valid_states = []
+    valid_labels = []
     
-    # Collect ampere data for plotting
-    #state_data = [[entry.iloc[10], entry.iloc[11], entry.iloc[12]] for entry in state_entries]
-    state_data = [[entry.values[10], entry.values[11], entry.values[12]] for entry in state_entries]
+    for idx, state in enumerate(states):
+        if state in df_drone0['state'].values:
+            entry = df_drone0[df_drone0['state'] == state].iloc[-1]  # Always pick the last occurrence
+            state_entries.append(entry)
+            valid_states.append(state)
+            valid_labels.append(state_labels[idx])
+    
+    # Collect ampere data for plotting using column names
+    state_data = [[entry['mobility_ampere'], entry['hardware_ampere'], entry['computing_ampere']] for entry in state_entries]
     
     # Convert to DataFrame for easier plotting, using custom labels as index
-    state_df = pd.DataFrame(state_data, columns=ampere_components, index=state_labels)
+    state_df = pd.DataFrame(state_data, columns=component_labels, index=valid_labels)
     
     # Plot a bar graph
-    state_df.plot(kind='bar', stacked=True, figsize=(10, 6), colormap="viridis")
+    ax = state_df.plot(kind='bar', stacked=True, figsize=(12, 8), colormap="viridis", width=0.6, edgecolor='black', alpha=0.9)
     
     # Add labels and title
-    print(state_df)
-    for entry in state_entries:
-        print(entry.values)  # Check extracted values
-    plt.xlabel("Drone State")
-    plt.ylabel("Ampere (A)")
-    plt.title("Ampere Contribution Breakdown for Drone ID 0 Across Selected States")
-    plt.legend(title="Ampere Component")
+    plt.xlabel("Drone Operational Phase", labelpad=15)
+    plt.ylabel("Current Draw (A)", labelpad=15)
+    plt.title("Ampere Contribution Breakdown for Drone ID 0", pad=20)
+    plt.legend(title="Component", frameon=True, fancybox=True, framealpha=0.9)
+    plt.xticks(rotation=0)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.savefig('plots/ampere_breakdown_drone_0.pdf')
     plt.show()
-
 
 if __name__ == "__main__":
     # Read data from the CSV file
-    #df_split = read_csv('results/results.csv')
-    df_split = pd.read_csv('results/results.csv')
-    print(df_split.shape)  # Check how many rows and columns are loaded
-    print(df_split.head(10))  # Print first 10 rows to verify
+    try:
+        df_split = read_csv('results/results.csv')
+        
+        # Interpolate battery usage data for even distribution over time
+        df_interp = interpolate_battery_usage(df_split)
 
-    # Interpolate battery usage data for even distribution over time
-    df_interp = interpolate_battery_usage(df_split)
+        # Plot the battery usage over time, highlighting different phases
+        plot_battery_usage_phases(df_interp)
 
-    # Plot the battery usage over time, highlighting different phases
-    plot_battery_usage_phases(df_interp)
+        # Plot the drone scenario
+        plot_drones_scenario(df_split)
 
-    # Plot the drone scenario
-    plot_drones_scenario(df_split)
+        # Plot the current draw over time for each drone
+        plot_ampere_draw(df_split)
 
-    # Plot the current draw over time for each drone
-    plot_ampere_draw(df_split)
+        # Plot the percentage over time for each drone
+        plot_percentage_over_time(df_split)
 
-    # Plot the percentage over time for each drone
-    plot_percentage_over_time(df_split)
-
-    #plot_ampere_components_over_time(df_split)
-
-    #plot_ampere_components_with_total(df_split)
-
-    #plot_drone_id_1(df_split)
-
-    # Plot the ampere breakdown by state
-    plot_ampere_breakdown_for_drone_01(df_split)
-
-    #plot_single_drone_trajectory(df_split, drone_id=1)
+        # Plot the ampere breakdown by state
+        plot_ampere_breakdown_for_drone_01(df_split)
+        
+    except FileNotFoundError:
+        print("Error: 'results/results.csv' not found. Please run the simulation first.")
+    except Exception as e:
+        print(f"An error occurred: {e}")

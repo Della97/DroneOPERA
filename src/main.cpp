@@ -114,6 +114,10 @@ void EdgeLogic(Ptr<Socket> socket12) {
  * \param pktInterval The interval between two packets.
  * \param node The done instance.
  */
+#include "energy/energy.h" // Include energy header for degradation functions
+
+// ... existing code ...
+
 static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount, Time pktInterval, Drone drone, double volt) {
     //MOBILITY FIRST AND GATHER DATA
     // Get the Ptr to the MobilityModel from the Drone
@@ -126,16 +130,23 @@ static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount
     double computingA = 0;
     double hwA = 0;
 
-    int sock1 = socket(AF_INET, SOCK_STREAM, 0);
+    // Update Temperature and Calculate Degradation
+    double currentTemp = drone.getCurrentTemp();
+    double speed = drone.getSpeed(); // Or get actual speed from mobility model if variable
+    // Assuming ambient temp is constant, e.g., 25.0
+    double newTemp = updateDroneTemperature(currentTemp, speed, 25.0);
+    drone.setCurrentTemp(newTemp);
 
-    sockaddr_in server{};
-    server.sin_family = AF_INET;
-    server.sin_port = htons(7070);
-    inet_pton(AF_INET, "127.0.0.1", &server.sin_addr);
-
-    if (connect(sock1, (struct sockaddr*)&server, sizeof(server)) < 0) {
-        std::cerr << "Connection failed\n";
-    }
+    // Calculate degradation energy loss (Joules) for this interval
+    // Note: calculateDegradation returns energy lost in the interval DT (1.0s)
+    // We assume pktInterval is 1.0s. If not, we might need to adjust.
+    double degradationJoules = calculateDegradation(newTemp, drone.getEnergySource()->GetRemainingEnergy());
+    
+    // Convert degradation energy to equivalent current (Ampere) to "consume" it via SetCurrentA
+    // Power (W) = Energy (J) / Time (s)
+    // Current (A) = Power (W) / Voltage (V)
+    double degradationPower = degradationJoules / pktInterval.GetSeconds();
+    double degradationAmpere = degradationPower / volt;
 
 
     //TRAIN
@@ -143,43 +154,37 @@ static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount
         ampere = 0;
         ampere = drone.calcMovePower(mobilityModel->getState())/volt;
         mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+        // Add degradation current
+        ampere += degradationAmpere;
         battery->SetCurrentA(ampere); // Set the actual draw of energy
     }
     if (mobilityModel->getState() == 1) {
         ampere = 0;
-        const std::vector<std::vector<double>>& hardware = drone.getHardware();
-        if (mobilityModel->getCompState()) { //COMP STARTED BUT NO IN AOI
-            //all
-            double sum = 0.0;
-
-            // Iterate over each sub-array in hardware
-            for (const auto& hwElement : hardware) {
-                if (hwElement.size() > 2) {
-                    sum += hwElement[1]/hwElement[3];
-                }
-            }
-            ampere = drone.calculateComputePower()/1.3 + drone.calcMovePower(mobilityModel->getState())/volt + sum;
+        
+        // Check if drone has entered AoI previously
+        if (drone.getHasEnteredAoI()) { //COMP STARTED BUT NO IN AOI
+             ampere = drone.calculateComputePower()/1.3 + drone.calcMovePower(mobilityModel->getState())/volt;
             computingA = drone.calculateComputePower()/1.3;
             mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
-            hwA = sum;
+            hwA = 0;
+            // Add degradation current
+            ampere += degradationAmpere;
             battery->SetCurrentA(ampere); // Set the actual draw of energy
         } else {  //NOT IN AOI NO COMP
-            double sum = 0.0;
-
-            // Iterate over each sub-array in hardware
-            for (const auto& hwElement : hardware) {
-                if (hwElement.size() > 2) {
-                    sum += hwElement[1]/hwElement[3];
-                }
-            }
             //only hover + drag
             ampere = drone.calcMovePower(mobilityModel->getState())/volt;
             mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+            hwA = 0;
+            // Add degradation current
+            ampere += degradationAmpere;
             battery->SetCurrentA(ampere); // Set the actual draw of energy
         }
         //std::cout << "Hover Power + drag + computation: " << drone.calculateComputePower() << std::endl;
     }
     if (mobilityModel->getState() == 2) {  // IN AOI AND COMPUTE
+        // Set flag that we have entered AoI
+        drone.setHasEnteredAoI(true);
+
         ampere = 0;
         const std::vector<std::vector<double>>& hardware = drone.getHardware();
         double sum = 0.0;
@@ -194,29 +199,27 @@ static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount
         computingA = drone.calculateComputePower()/1.3;
         mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
         hwA = sum;
+        // Add degradation current
+        ampere += degradationAmpere;
         battery->SetCurrentA(ampere); // Set the actual draw of energy
     }
     if (mobilityModel->getState() == 3) {
         ampere = 0;
-        ampere = drone.calcMovePower(mobilityModel->getState())/volt;
+        if (drone.getHasEnteredAoI()) {
+            ampere = drone.calculateComputePower()/1.3 + drone.calcMovePower(mobilityModel->getState())/volt;
+            computingA = drone.calculateComputePower()/1.3;
+        } else {
+            ampere = drone.calcMovePower(mobilityModel->getState())/volt;
+            computingA = 0;
+        }
         mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+        // Add degradation current
+        ampere += degradationAmpere;
         battery->SetCurrentA(ampere); // Set the actual draw of energy
     }
     double plot = battery->GetTotalEnergyConsumption();
     std::cout << "Total energy consumption: " << plot << std::endl;
     double percentage = (battery->GetTotalEnergyConsumption() / drone.getMaxCapacity())*100;
-
-    std::stringstream ss;
-    std::time_t t = std::time(nullptr);
-    ss << "{ \"id\": " << drone.getNode()->GetId()
-       << ", \"time\": \"" << std::put_time(std::localtime(&t), "%H:%M:%S")
-       << "\", \"value\": " << 100 - percentage
-       << ", \"x\": " << pos.x << ", \"y\": " << pos.y << ", \"z\": " << pos.z
-       << " }\n";
-    std::string msg = ss.str();
-    send(sock1, msg.c_str(), msg.size(), 0);
-    //std::cout << msg << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     if (drone.getNode()->GetId() >= 0){
         std::cout << drone.getNode()->GetId() << " -> " << 100 - percentage << std::endl;
@@ -528,19 +531,19 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < 4; i++) {
         // Create a Drone object and push it into the vector
         if (i == 0) {
-            Drone drone(stas.Get(i), deviceEnergyModel1, maxCapacityJ, configPath, i);
+            Drone drone(stas.Get(i), deviceEnergyModel1, batteryModel1, maxCapacityJ, configPath, i);
             drones.push_back(drone);
         }
         if (i == 1) {
-            Drone drone(stas.Get(i), deviceEnergyModel2, maxCapacityJ, configPath, i);
+            Drone drone(stas.Get(i), deviceEnergyModel2, batteryModel2, maxCapacityJ, configPath, i);
             drones.push_back(drone);
         }
         if (i == 2) {
-            Drone drone(stas.Get(i), deviceEnergyModel3, maxCapacityJ, configPath, i);
+            Drone drone(stas.Get(i), deviceEnergyModel3, batteryModel3, maxCapacityJ, configPath, i);
             drones.push_back(drone);
         }
         if (i == 3) {
-            Drone drone(stas.Get(i), deviceEnergyModel4, maxCapacityJ, configPath, i);
+            Drone drone(stas.Get(i), deviceEnergyModel4, batteryModel4, maxCapacityJ, configPath, i);
             drones.push_back(drone);
         }
     }

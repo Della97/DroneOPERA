@@ -39,7 +39,7 @@ TypeId CustomMobilityModel::GetTypeId(void) {
                       MakeDoubleChecker<double>())
         .AddAttribute("TurnStrenght",
                       "Turn strenght",
-                      DoubleValue(50),
+                      DoubleValue(10),
                       MakeDoubleAccessor(&CustomMobilityModel::m_turn),
                       MakeDoubleChecker<double>());
     return tid;

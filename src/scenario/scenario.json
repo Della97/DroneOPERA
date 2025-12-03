@@ -8,12 +8,12 @@
       "energy": 200.0,
       "dragCoefficient": 0.3,
       "hardware": [
-        [0.0, 1.0, 5.0, 5.0],
-        [2.0, 3.5, 7.5, 5.0]
+        [0.0, 1.0, 2.5, 5.0],
+        [2.0, 3.5, 2.5, 5.0]
       ],
       "numLocalIter": 10000.0,
       "cpuCyclePerOperation": 3.0,
-      "operationPerData": 600000.0,
+      "operationPerData": 20000.0,
       "numbTrainDataSet": 60.0,
       "switchCapacitance": 8e-11,
       "cpuFreq": 1.5,
@@ -59,7 +59,7 @@
       ],
       "numLocalIter": 10000.0,
       "cpuCyclePerOperation": 3.0,
-      "operationPerData": 200000.0,
+      "operationPerData": 20000.0,
       "numbTrainDataSet": 60.0,
       "switchCapacitance": 8e-11,
       "cpuFreq": 1.5,
@@ -100,12 +100,12 @@
       "energy": 200.0,
       "dragCoefficient": 0.31,
       "hardware": [
-        [0.0, 1.0, 5.0, 5.0],
-        [2.0, 3.5, 7.5, 5.0]
+        [0.0, 1.0, 10.0, 5.0],
+        [2.0, 3.5, 15.0, 5.0]
       ],
       "numLocalIter": 10000.0,
       "cpuCyclePerOperation": 3.0,
-      "operationPerData": 200000.0,
+      "operationPerData": 20000.0,
       "numbTrainDataSet": 60.0,
       "switchCapacitance": 8e-11,
       "cpuFreq": 1.5,
@@ -146,12 +146,12 @@
       "energy": 220.0,
       "dragCoefficient": 0.29,
       "hardware": [
-        [1.1, 2.0, 4.5, 5.0],
-        [0.5, 1.5, 6.0, 5.0]
+        [1.1, 2.0, 20.0, 5.0],
+        [0.5, 1.5, 30.0, 5.0]
       ],
       "numLocalIter": 10000.0,
       "cpuCyclePerOperation": 3.0,
-      "operationPerData": 200000.0,
+      "operationPerData": 20000.0,
       "numbTrainDataSet": 60.0,
       "switchCapacitance": 8e-11,
       "cpuFreq": 1.6,

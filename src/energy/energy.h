@@ -81,5 +81,7 @@ double calcCommEnergy(double p_n, double s_n, double B, double f_c, double d);
 //Comp power
 double calcCompPower(double y, double v, double cyclexop, double opxdata, double Dn, double I);
 
+double updateDroneTemperature(double currentTemp, double speed, double ambientTemp);
+double calculateDegradation(double currentTemp, double batteryCapacity);
 
 #endif // ENERGY_H

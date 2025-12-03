@@ -55,3 +55,8 @@ Thumbs.db
 
 # Ignore vscode files
 .vscode/
+
+# Ignore ns3 folder content
+src/includes/ns3/
+src/includes/rapidjson/
+src/includes/Crow/

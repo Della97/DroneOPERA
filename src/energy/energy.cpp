@@ -38,14 +38,14 @@ double calculateOmega(double vx, double vy) {
 double P_level(double mass, double radiusPropellers, double numbProp, double vx, double vy) {
     double Omega = calculateOmega(vx, vy);
     double A = 2 * PI * radiusPropellers * radiusPropellers*numbProp;
-    double V_h = sqrt(((mass/1000) * GRAV) / (2 * AIR_DENSITY * A));
-    return (((mass/1000)*GRAV) * ((mass/1000)*GRAV)) / (sqrt(2) * AIR_DENSITY * A) * (1 / (sqrt(Omega + sqrt(Omega * Omega + 4 * V_h * V_h * V_h * V_h))));
+    double V_h = sqrt((mass * GRAV) / (2 * AIR_DENSITY * A));
+    return ((mass*GRAV) * (mass*GRAV)) / (sqrt(2) * AIR_DENSITY * A) * (1 / (sqrt(Omega + sqrt(Omega * Omega + 4 * V_h * V_h * V_h * V_h))));
 }
 
 // Function to calculate P_vertical[n]
 double P_vertical(double mass, double vz) {
-    //std::cout << ((mass/1000)*GRAV) * vz << std::endl;
-    return ((mass/1000)*GRAV) * vz;
+    //std::cout << (mass*GRAV) * vz << std::endl;
+    return (mass*GRAV) * vz;
 }
 
 // Function to calculate P_drag[n]
