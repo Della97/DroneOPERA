@@ -19,6 +19,7 @@ public:
   static TypeId GetTypeId(void);
   virtual int getState(void);
   virtual bool getCompState(void);
+  virtual bool isTurning(void);   // true when drone is executing a snake-row turn
   virtual std::string getAoI(void);
   CustomMobilityModel();
   // Setters for attributes

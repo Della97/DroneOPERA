@@ -32,6 +32,8 @@ build/
 *.layout
 *.cbp
 *.depend.bak
+*.pcap
+CHANGES.md
 
 # Ignore Xcode files
 *.xcworkspace/
@@ -60,3 +62,7 @@ Thumbs.db
 src/includes/ns3/
 src/includes/rapidjson/
 src/includes/Crow/
+
+# Ignore large dataset files
+dataset/12683453/flights.csv
+dataset/12683453/raw_files.zip

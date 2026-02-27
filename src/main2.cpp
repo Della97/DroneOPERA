@@ -617,7 +617,7 @@ int main(int argc, char* argv[]) {
 
     Time now = Simulator::Now();
     //now += Seconds (105);
-    now += Seconds (450);
+    now += Seconds (600);
     Simulator::Stop(now);
     Simulator::Run();
 

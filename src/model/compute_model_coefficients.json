@@ -1,0 +1,54 @@
+{
+  "description": "RPi5-fitted compute energy model for DroneOPERA",
+  "ns3_step_s": 1.0,
+  "drone_voltage_V": 1.3,
+  "model_A_power_law": {
+    "alpha": 2.748109092521158e-09,
+    "beta": 3.005872848195091,
+    "ops_ref": 36000000000.0,
+    "r2": -0.03081500512144464,
+    "rmse": 1.2225669157740915
+  },
+  "model_B_polynomial": {
+    "coeffs": [
+      7090.413572111956,
+      -9.442060317377342,
+      0.003147153241131323
+    ],
+    "degree": 2,
+    "r2": 0.10425712053136527,
+    "rmse": 0.3042883026404905
+  },
+  "model_C_phase_mean": {
+    "idle": {
+      "mean_W": 3.503,
+      "std_W": 0.2266
+    },
+    "partial": {
+      "mean_W": 6.0026,
+      "std_W": 0.2957
+    },
+    "full": {
+      "mean_W": 8.4919,
+      "std_W": 0.3248
+    },
+    "return": {
+      "mean_W": 6.0434,
+      "std_W": 0.314
+    }
+  },
+  "how_to_use_in_ns3": {
+    "desc": "For each DroneLogic step, compute I_compute_A = P_W / drone_voltage_V",
+    "example": "I = model_A['alpha'] * pow(cpu_freq_mhz, model_A['beta']) * (ops / model_A['ops_ref']) / drone_voltage_V",
+    "then": "battery->SetCurrentA(I_mobility + I_compute + I_hw + I_degradation)"
+  },
+  "drone_params_used": {
+    "cpuFreq": 1.5,
+    "voltage": 1.3,
+    "switchCapacitance": 8e-11,
+    "cpuCyclePerOperation": 3.0,
+    "operationPerData": 20000.0,
+    "numbTrainDataSet": 60.0,
+    "numLocalIter": 10000.0
+  }
+}

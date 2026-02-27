@@ -123,6 +123,12 @@ bool CustomMobilityModel::getCompState(void) {
     return m_start;
 }
 
+// Returns true while the drone is executing the lateral row-change turn.
+// During this phase m_start==false: the drone moves in both X and Y simultaneously.
+bool CustomMobilityModel::isTurning(void) {
+    return atEight && !descend && !m_start;
+}
+
 std::string CustomMobilityModel::getAoI(void) {
     std::ostringstream oss;
     oss << AoI.xMin << " " << AoI.xMax << " " << AoI.yMin << " " << AoI.yMax << " " << AoI.zMin << " " << AoI.zMax;

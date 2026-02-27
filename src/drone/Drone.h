@@ -53,6 +53,14 @@ private:
     double frequency;   //carrier dist freq
     double MLsize;      //size of local model
 
+    // Empirical compute model (loaded from scenario.json "compute_model",
+    // measured on RPi5 via rpi5_profiler.py + compute_energy_model.py)
+    double empiricalComputeW[4] = {0.0, 0.0, 0.0, 0.0}; // W per NS3 state [0=idle,1=partial,2=full,3=return]
+    double plAlpha  = 0.0;   // power-law alpha
+    double plBeta   = 0.0;   // power-law beta
+    double plOpsRef = 1.0;   // power-law ops reference
+    bool   hasEmpiricalModel = false;
+
     // NS-3 related fields
     ns3::Ptr<ns3::Node> node;  // NS-3 Node reference
     ns3::Ptr<ns3::energy::SimpleDeviceEnergyModel> energyModel;  // Pointer to SimpleDeviceEnergyModel
@@ -79,6 +87,9 @@ public:
     void setWirelessTransmissionPower(double p);
     void setCarrierFrequency(double f);
     void setLocalModelSize(double s);
+    void setEmpiricalComputeW(int state, double watts); // set measured W for one NS3 state
+    void setPowerLaw(double alpha, double beta, double opsRef);
+    bool getHasEmpiricalModel() const { return hasEmpiricalModel; }
 
     // Setters for mobility and bounds fields
     void setMaxHeight(double height);
@@ -149,8 +160,10 @@ public:
     double calculateVertPower();
     double calculatePDrag();
     double calculateCommEnergy(double distance);
-    double calculateComputePower();
+    double calculateComputePower();                   // theoretical (legacy)
+    double calculateComputePower(int mobilityState);  // empirical – uses RPi5 measurements when available
     double calcMovePower(int state);
+    double calcMovePower(int state, bool turning); // accounts for lateral turn velocity
 
     // State tracking
     bool hasEnteredAoI = false;

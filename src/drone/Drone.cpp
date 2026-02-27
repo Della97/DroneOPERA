@@ -56,6 +56,19 @@ void Drone::setWirelessTransmissionPower(double p) { power = p; }
 void Drone::setCarrierFrequency(double f) { frequency = f;}
 void Drone::setLocalModelSize(double s) { MLsize = s; }
 
+void Drone::setEmpiricalComputeW(int state, double watts) {
+    if (state >= 0 && state <= 3) {
+        empiricalComputeW[state] = watts;
+        hasEmpiricalModel = true;
+    }
+}
+
+void Drone::setPowerLaw(double alpha, double beta, double opsRef) {
+    plAlpha  = alpha;
+    plBeta   = beta;
+    plOpsRef = opsRef;
+}
+
 // Setters for NS-3 Node and EnergyModel references
 void Drone::setNode(ns3::Ptr<ns3::Node> nodeRef) {
     node = nodeRef;
@@ -133,6 +146,16 @@ double Drone::calcMovePower(int state) {
     return 0;
 }
 
+// Turn-aware overload.
+// During a snake row-change the drone moves at avgVelocity in BOTH X and Y simultaneously
+// (see UpdatePosition: m_position.y += vy  AND  m_position.x += vx).
+// This means Omega = vx^2 + vy^2 = 2*speed^2, raising drag power by ~2.83x vs straight flight.
+double Drone::calcMovePower(int state, bool turning) {
+    if (!turning) return calcMovePower(state);
+    // Both lateral (Y) and forward/backward (X) components active during the turn
+    return P_UAV(weight, pDrag, propellersRadius, numbPropellers, avgVelocity, avgVelocity, 0);
+}
+
 //***********************************************************************************************************************
 
 double Drone::calculateCommEnergy(double distance) {
@@ -142,6 +165,14 @@ double Drone::calculateCommEnergy(double distance) {
 double Drone::calculateComputePower(){
     return calcCompPower(switchCapacitance, voltage, cpuCyclexop, opxdata, numbTrainDataSet, numLocalIter);
     //return calcCompPower(8e-11, 1.3, 2, 1000000, 60, 10000);
+}
+
+// Empirical overload: returns Watts for the given NS3 mobility state.
+// Falls back to the theoretical formula when no empirical model is loaded.
+double Drone::calculateComputePower(int state) {
+    if (hasEmpiricalModel && state >= 0 && state <= 3)
+        return empiricalComputeW[state];
+    return calcCompPower(switchCapacitance, voltage, cpuCyclexop, opxdata, numbTrainDataSet, numLocalIter);
 }
 
 

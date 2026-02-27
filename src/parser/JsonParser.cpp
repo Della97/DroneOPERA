@@ -166,6 +166,23 @@ bool JsonParser::parseJson(const std::string& filename, Drone& drone, int index)
             drone.setLocalModelSize(droneObj["localModelSize"].GetDouble());
         }
 
+        // Parse empirical compute model (produced by compute_energy_model.py from RPi5 data)
+        if (droneObj.HasMember("compute_model") && droneObj["compute_model"].IsObject()) {
+            const rapidjson::Value& cm = droneObj["compute_model"];
+            if (cm.HasMember("phase_power_W") && cm["phase_power_W"].IsObject()) {
+                const rapidjson::Value& pw = cm["phase_power_W"];
+                if (pw.HasMember("idle"))    drone.setEmpiricalComputeW(0, pw["idle"].GetDouble());
+                if (pw.HasMember("partial")) drone.setEmpiricalComputeW(1, pw["partial"].GetDouble());
+                if (pw.HasMember("full"))    drone.setEmpiricalComputeW(2, pw["full"].GetDouble());
+                if (pw.HasMember("return"))  drone.setEmpiricalComputeW(3, pw["return"].GetDouble());
+            }
+            if (cm.HasMember("power_law") && cm["power_law"].IsObject()) {
+                const rapidjson::Value& pl = cm["power_law"];
+                if (pl.HasMember("alpha") && pl.HasMember("beta") && pl.HasMember("ops_ref"))
+                    drone.setPowerLaw(pl["alpha"].GetDouble(), pl["beta"].GetDouble(), pl["ops_ref"].GetDouble());
+            }
+        }
+
     } else {
         std::cerr << "Drones array not found in JSON." << std::endl;
         return false;

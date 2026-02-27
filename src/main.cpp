@@ -118,17 +118,36 @@ void EdgeLogic(Ptr<Socket> socket12) {
 
 // ... existing code ...
 
-static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount, Time pktInterval, Drone drone, double volt) {
+static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount, Time pktInterval, Drone drone) {
     //MOBILITY FIRST AND GATHER DATA
     // Get the Ptr to the MobilityModel from the Drone
     Ptr<CustomMobilityModel> mobilityModel = drone.getNode()->GetObject<CustomMobilityModel>();
     Ptr<ns3::energy::SimpleDeviceEnergyModel> battery = drone.getEnergyModel();
+
+    // Read live pack voltage from the Shepherd battery model.
+    // At full charge: 12.6 V. At cutoff: 9.9 V.
+    // Using a fixed voltage would underestimate current draw as the battery depletes.
+    double volt = drone.getEnergySource()->GetSupplyVoltage();
+    if (volt < 9.9) volt = 9.9; // clamp to cutoff floor
 
     Vector pos = mobilityModel->GetPosition();
     double ampere = 0;
     double mobilityA = 0;
     double computingA = 0;
     double hwA = 0;
+
+    bool turning = mobilityModel->isTurning();
+
+    // Log active compute model on very first call
+    if (pktCount == 9999) {
+        int state = mobilityModel->getState();
+        double P = drone.calculateComputePower(state);
+        std::cout << "[COMPUTE MODEL] Drone " << drone.getNode()->GetId()
+                  << "  state=" << state
+                  << "  compute_W=" << P
+                  << "  compute_A=" << P/volt
+                  << "  (empirical=" << (drone.getHasEmpiricalModel() ? "YES" : "NO") << ")" << std::endl;
+    }
 
     // Update Temperature and Calculate Degradation
     double currentTemp = drone.getCurrentTemp();
@@ -152,8 +171,8 @@ static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount
     //TRAIN
     if (mobilityModel->getState() == 0) {
         ampere = 0;
-        ampere = drone.calcMovePower(mobilityModel->getState())/volt;
-        mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+        ampere = drone.calcMovePower(mobilityModel->getState(), turning)/volt;
+        mobilityA = drone.calcMovePower(mobilityModel->getState(), turning)/volt;
         // Add degradation current
         ampere += degradationAmpere;
         battery->SetCurrentA(ampere); // Set the actual draw of energy
@@ -163,17 +182,17 @@ static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount
         
         // Check if drone has entered AoI previously
         if (drone.getHasEnteredAoI()) { //COMP STARTED BUT NO IN AOI
-             ampere = drone.calculateComputePower()/1.3 + drone.calcMovePower(mobilityModel->getState())/volt;
-            computingA = drone.calculateComputePower()/1.3;
-            mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+            computingA = drone.calculateComputePower(mobilityModel->getState()) / volt;
+            mobilityA  = drone.calcMovePower(mobilityModel->getState(), turning) / volt;
+            ampere     = computingA + mobilityA;
             hwA = 0;
             // Add degradation current
             ampere += degradationAmpere;
             battery->SetCurrentA(ampere); // Set the actual draw of energy
         } else {  //NOT IN AOI NO COMP
             //only hover + drag
-            ampere = drone.calcMovePower(mobilityModel->getState())/volt;
-            mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+            ampere = drone.calcMovePower(mobilityModel->getState(), turning)/volt;
+            mobilityA = drone.calcMovePower(mobilityModel->getState(), turning)/volt;
             hwA = 0;
             // Add degradation current
             ampere += degradationAmpere;
@@ -195,9 +214,9 @@ static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount
                 sum += hwElement[2]/hwElement[3]; //HARDWARE ON
             }
         }
-        ampere = drone.calculateComputePower()/1.3 + drone.calcMovePower(mobilityModel->getState())/volt + sum;
-        computingA = drone.calculateComputePower()/1.3;
-        mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+        computingA = drone.calculateComputePower(mobilityModel->getState()) / volt;
+        mobilityA  = drone.calcMovePower(mobilityModel->getState(), turning) / volt;
+        ampere     = computingA + mobilityA + sum;
         hwA = sum;
         // Add degradation current
         ampere += degradationAmpere;
@@ -206,13 +225,14 @@ static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount
     if (mobilityModel->getState() == 3) {
         ampere = 0;
         if (drone.getHasEnteredAoI()) {
-            ampere = drone.calculateComputePower()/1.3 + drone.calcMovePower(mobilityModel->getState())/volt;
-            computingA = drone.calculateComputePower()/1.3;
+            computingA = drone.calculateComputePower(mobilityModel->getState()) / volt;
+            mobilityA  = drone.calcMovePower(mobilityModel->getState(), turning) / volt;
+            ampere     = computingA + mobilityA;
         } else {
-            ampere = drone.calcMovePower(mobilityModel->getState())/volt;
+            ampere = drone.calcMovePower(mobilityModel->getState(), turning)/volt;
             computingA = 0;
         }
-        mobilityA = drone.calcMovePower(mobilityModel->getState())/volt;
+        mobilityA = drone.calcMovePower(mobilityModel->getState(), turning)/volt;
         // Add degradation current
         ampere += degradationAmpere;
         battery->SetCurrentA(ampere); // Set the actual draw of energy
@@ -244,8 +264,7 @@ static void DroneLogic(Ptr<Socket> socket12, uint32_t pktSize, uint32_t pktCount
                             pktSize,
                             pktCount - 1,
                             pktInterval,
-                            drone,
-                            volt);
+                            drone);
     }
     else {
         socket12->Close();
@@ -697,15 +716,14 @@ int main(int argc, char* argv[]) {
                                     packetSize,
                                     numPackets,
                                     interval,
-                                    drones[i],
-                                    12.6);
+                                    drones[i]);
                                     
         }
 
 
     Time now = Simulator::Now();
     //now += Seconds (105);
-    now += Seconds (500);
+    now += Seconds (600);
     Simulator::Stop(now);
     Simulator::Run();
 
@@ -716,7 +734,7 @@ int main(int argc, char* argv[]) {
     // Exit the MPI execution environment
     //MpiInterface::Disable ();
 
-    std::string filename = "../results/results.csv";
+    std::string filename = "results/results.csv";
 
     std::ofstream outFile(filename);
 

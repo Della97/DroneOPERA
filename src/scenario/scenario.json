@@ -44,7 +44,11 @@
       "bandwidth": 20.0,
       "wirelessTransmissionPower": 0.1,
       "carrierFrequency": 2.4e9,
-      "localModelSize": 1e6
+      "localModelSize": 1e6,
+      "compute_model": {
+        "phase_power_W": { "idle": 3.503, "partial": 8.492, "full": 8.492, "return": 8.492 },
+        "power_law":     { "alpha": 2.748e-9, "beta": 3.006, "ops_ref": 3.6e10 }
+      }
     },
     {
       "weight": 1200.5,
@@ -90,7 +94,11 @@
       "bandwidth": 20.0,
       "wirelessTransmissionPower": 0.1,
       "carrierFrequency": 2.4e9,
-      "localModelSize": 1e6
+      "localModelSize": 1e6,
+      "compute_model": {
+        "phase_power_W": { "idle": 3.503, "partial": 8.492, "full": 8.492, "return": 8.492 },
+        "power_law":     { "alpha": 2.748e-9, "beta": 3.006, "ops_ref": 3.6e10 }
+      }
     },
     {
       "weight": 1200.5,
@@ -136,7 +144,11 @@
       "bandwidth": 20.0,
       "wirelessTransmissionPower": 0.1,
       "carrierFrequency": 2.4e9,
-      "localModelSize": 1e6
+      "localModelSize": 1e6,
+      "compute_model": {
+        "phase_power_W": { "idle": 3.503, "partial": 8.492, "full": 8.492, "return": 8.492 },
+        "power_law":     { "alpha": 2.748e-9, "beta": 3.006, "ops_ref": 3.6e10 }
+      }
     },
     {
       "weight": 1300.0,
@@ -182,7 +194,11 @@
       "bandwidth": 20.0,
       "wirelessTransmissionPower": 0.1,
       "carrierFrequency": 2.4e9,
-      "localModelSize": 1e6
+      "localModelSize": 1e6,
+      "compute_model": {
+        "phase_power_W": { "idle": 3.503, "partial": 8.492, "full": 8.492, "return": 8.492 },
+        "power_law":     { "alpha": 2.748e-9, "beta": 3.006, "ops_ref": 3.6e10 }
+      }
     }
   ]
 }
